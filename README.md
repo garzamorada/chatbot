@@ -5,11 +5,10 @@ Asistente de atención por **WhatsApp** basado en un menú de opciones, integrad
 escribe, el bot le muestra un listado numerado; según lo que elija, le responde un
 texto, lo lleva a otro menú o lo deriva a una persona.
 
-> **Este repositorio es una copia de referencia.** El código sale de un sistema
-> interno más grande y acá se publica aislado, para consulta y para poder
-> levantarlo en un entorno propio con Docker. **No contiene ninguna credencial,
-> URL ni dato real** — toda la configuración se toma de variables de entorno. La
-> instancia que está en producción es otra y sigue funcionando por su cuenta.
+> **Este repositorio es una copia de referencia.** El código tiene el propósito
+> de consulta y si se lo desea poder levantarlo en un entorno propio con Docker.
+> **No contiene ninguna credencial, URL ni dato real** - toda la configuración
+> se toma de variables de entorno.
 
 ---
 
@@ -61,13 +60,10 @@ Dependencias de Python (`requirements.txt`): sólo `Django`, `requests` y
 ```
 
 **Usuarios:** se usa el modelo `User` nativo de Django. La app **`logs`** es un
-reemplazo mínimo de un app de auditoría del sistema original (sólo el modelo
-`UserLog`, que el panel usa para registrar los cambios de configuración). La app
-`chatbot` sólo se tocó para genericar textos y rutas de documentación.
+mínimo de un app de auditoría del sistema (modelo
+`UserLog`, que el panel usa para registrar los cambios de configuración).
 
-El `templates/base.html` es un layout neutro (Bootstrap 5 por CDN, sin logos ni
-paleta propia); en el sistema original la app extiende el `base.html` de ese
-sistema.
+El `templates/base.html` es un layout neutro (Bootstrap 5 por CDN).
 
 ---
 
@@ -85,7 +81,7 @@ docker compose exec web python manage.py createsuperuser
 Panel: <http://localhost:8000/chatbot/> · Admin: <http://localhost:8000/admin/>
 
 Para que un usuario administre el chatbot, asignarle el grupo **`admin_chatbot`**
-(lo crea la migración `0014`) o los permisos sueltos `ver_panel_chatbot`,
+(lo crea la migración) o los permisos sueltos `ver_panel_chatbot`,
 `gestionar_menu_chatbot`, `gestionar_token_chatbot`, `gestionar_archivos_chatbot`,
 `gestionar_horarios_chatbot`, `gestionar_inboxes_chatbot`.
 
@@ -113,7 +109,7 @@ Ejemplo de línea de cron (en el host, apuntando al contenedor):
 
 Todo se define en `.env` (ver `.env.example`). Las credenciales de la API de
 chatealo, la URL base y el secreto de firma del webhook se cargan **desde el
-panel** (modelo `ConfiguracionChatbot`), no desde variables de entorno — así
+panel** (modelo `ConfiguracionChatbot`), así
 quedan fuera del repositorio y del control de versiones.
 
 | Variable | Para qué |
@@ -142,4 +138,4 @@ python manage.py runserver
 
 ## Licencia
 
-Uso interno. Publicado como referencia de código.
+Generado con IA. Publicado como referencia de código.
