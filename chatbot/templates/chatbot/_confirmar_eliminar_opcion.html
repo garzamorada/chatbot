@@ -1,0 +1,17 @@
+<div class="modal-header">
+  <h5 class="modal-title"><i class="bi bi-exclamation-triangle text-warning"></i> Eliminar opción</h5>
+  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+</div>
+<form method="post" action="{% url 'chatbot:eliminar_opcion' opcion.pk %}" class="form-modal-chatbot">
+  {% csrf_token %}
+  <div class="modal-body text-center">
+    <p class="mb-1">¿Eliminar la opción <strong>"{{ opcion.texto }}"</strong>?</p>
+    {% if opcion.hijos.exists %}
+    <p class="text-danger small mb-0">Esta opción tiene otras opciones adentro. Al eliminarla también se eliminan.</p>
+    {% endif %}
+  </div>
+  <div class="modal-footer">
+    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+    <button type="submit" class="btn btn-danger"><i class="bi bi-trash"></i> Eliminar</button>
+  </div>
+</form>

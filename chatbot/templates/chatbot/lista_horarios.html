@@ -1,0 +1,157 @@
+{% extends base_template|default:"base.html" %}
+{% load static %}
+{% block head %}
+<link rel="stylesheet" href="{% static 'css/styles-chatbot.css' %}?v=20260828">
+{% endblock %}
+{% block content %}
+{% if not embed %}
+<div class="row mb-3 align-items-center">
+  <div class="col">
+    <h4 class="mb-0"><i class="bi bi-clock"></i> Horarios de atención — Chatbot</h4>
+  </div>
+  <div class="col-auto d-flex gap-2">
+    <a href="{% url 'chatbot:calendario_excepciones' %}" class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-calendar3"></i> Días excepcionales
+    </a>
+    <a href="{% url 'chatbot:panel' %}" class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-arrow-left"></i> Volver al panel
+    </a>
+  </div>
+</div>
+{% endif %}
+
+{% if messages %}
+  {% for msg in messages %}
+    <div class="alert alert-{{ msg.tags }} alert-dismissible fade show">
+      {{ msg }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+  {% endfor %}
+{% endif %}
+
+<p class="text-muted small">
+  Cliqueá y arrastrá sobre la grilla para pintar los horarios en los que la opción "Derivación" deriva
+  a un operador. Si dejás todo sin pintar, la derivación funciona siempre (sin restricción de horario).
+  Los <a href="{% url 'chatbot:calendario_excepciones' %}">días excepcionales</a> (feriados, asuetos,
+  horario reducido) pisan esto para una fecha puntual.
+</p>
+
+<div class="card shadow-sm border-0 mb-3">
+  <div class="card-body">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <div class="d-flex gap-2 align-items-center flex-wrap">
+        <button type="button" class="btn btn-outline-secondary btn-sm" id="btn-limpiar-semanal">
+          <i class="bi bi-eraser"></i> Limpiar todo
+        </button>
+        <button type="button" class="btn btn-outline-secondary btn-sm" id="btn-copiar-lunes">
+          <i class="bi bi-copy"></i> Copiar Lunes a Martes-Viernes
+        </button>
+        <div class="form-check form-check-inline ms-1 mb-0">
+          <input class="form-check-input" type="checkbox" id="check-incluir-finde">
+          <label class="form-check-label small text-muted" for="check-incluir-finde">incluir Sábado y Domingo</label>
+        </div>
+      </div>
+      {% if perms.chatbot.gestionar_horarios_chatbot %}
+      <button type="button" class="btn btn-primary btn-sm" id="btn-guardar-semanal">
+        <i class="bi bi-save"></i> Guardar
+      </button>
+      {% endif %}
+    </div>
+
+    <div class="table-responsive">
+      <table class="grilla-horarios" id="grilla-semanal">
+        <thead>
+          <tr>
+            <th style="width:60px;"></th>
+            {% for valor, nombre in dias %}
+            <th class="columna-dia-header {% if valor == 5 or valor == 6 %}columna-fin-de-semana{% endif %}" data-dia="{{ valor }}">
+              {{ nombre }}{% if valor == 5 or valor == 6 %} <small class="d-block text-muted" style="font-weight:normal;">fin de semana</small>{% endif %}
+            </th>
+            {% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for slot in slots %}
+          <tr>
+            <td class="grilla-hora">{{ slot }}</td>
+            {% for valor, nombre in dias %}
+            <td><div class="celda-horario" data-key="{{ valor }}-{{ slot }}"></div></td>
+            {% endfor %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{{ celdas_iniciales|json_script:"celdas-iniciales-semanal" }}
+{% endblock %}
+
+{% block foot %}
+<script src="{% static 'js/chatbot_horarios.js' %}"></script>
+<script>
+(function () {
+  var tabla = document.getElementById('grilla-semanal');
+  var iniciales = JSON.parse(document.getElementById('celdas-iniciales-semanal').textContent);
+  iniciales.forEach(function (key) {
+    var celda = tabla.querySelector('.celda-horario[data-key="' + key + '"]');
+    if (celda) celda.classList.add('seleccionada');
+  });
+  activarPintadoGrilla(tabla);
+
+  document.getElementById('btn-limpiar-semanal').addEventListener('click', function () {
+    tabla.querySelectorAll('.celda-horario.seleccionada').forEach(function (c) { c.classList.remove('seleccionada'); });
+  });
+
+  document.getElementById('btn-copiar-lunes').addEventListener('click', function () {
+    var slots = Array.prototype.map.call(tabla.querySelectorAll('tbody tr'), function (tr) {
+      return tr.querySelector('.grilla-hora').textContent.trim();
+    });
+    var dias = Array.prototype.map.call(tabla.querySelectorAll('thead th[data-dia]'), function (th) { return th.dataset.dia; });
+    var lunesSeleccion = {};
+    slots.forEach(function (slot) {
+      var celda = tabla.querySelector('.celda-horario[data-key="0-' + slot + '"]');
+      lunesSeleccion[slot] = celda && celda.classList.contains('seleccionada');
+    });
+    var incluirFinde = document.getElementById('check-incluir-finde').checked;
+    var findeSemana = ['5', '6']; // Sábado, Domingo — no se copian por defecto
+    dias.forEach(function (dia) {
+      if (dia === '0') return;
+      if (!incluirFinde && findeSemana.indexOf(dia) !== -1) return;
+      slots.forEach(function (slot) {
+        var celda = tabla.querySelector('.celda-horario[data-key="' + dia + '-' + slot + '"]');
+        if (celda) celda.classList.toggle('seleccionada', !!lunesSeleccion[slot]);
+      });
+    });
+  });
+
+  var btnGuardar = document.getElementById('btn-guardar-semanal');
+  if (btnGuardar) {
+    btnGuardar.addEventListener('click', function () {
+      var celdas = Array.prototype.map.call(
+        tabla.querySelectorAll('.celda-horario.seleccionada'),
+        function (c) { return c.dataset.key; }
+      );
+      btnGuardar.disabled = true;
+      fetch("{% url 'chatbot:guardar_horarios_grilla' %}", {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfTokenChatbot() },
+        body: JSON.stringify({ celdas: celdas }),
+      })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          btnGuardar.disabled = false;
+          if (data.ok) {
+            window.location.reload();
+          } else {
+            alert(data.error || 'No se pudo guardar.');
+          }
+        })
+        .catch(function () {
+          btnGuardar.disabled = false;
+          alert('Error de conexión al guardar.');
+        });
+    });
+  }
+})();
+</script>
+{% endblock %}

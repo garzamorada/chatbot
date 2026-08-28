@@ -1,0 +1,49 @@
+{% load static %}
+<div class="menu-lista" data-parent-id="{% if opcion %}{{ opcion.pk }}{% else %}{% endif %}">
+  {% for op in opciones %}
+  <div class="menu-drop-indicator" data-parent="{% if opcion %}{{ opcion.pk }}{% else %}{% endif %}" data-before="{{ op.pk }}"></div>
+  <div class="menu-nodo" data-id="{{ op.pk }}">
+    <div class="menu-card tipo-{{ op.tipo|lower }} {% if not op.activo %}menu-card-inactiva{% endif %}"
+         draggable="true">
+      <i class="bi bi-grip-vertical menu-drag-handle" title="Arrastrar"></i>
+      {% if op.tipo == 'SUBMENU' %}
+      <button type="button" class="menu-toggle collapsed" data-bs-toggle="collapse"
+              data-bs-target="#menu-hijos-{{ op.pk }}" aria-expanded="false"
+              title="Mostrar / ocultar el contenido de este menú">
+        <i class="bi bi-chevron-right"></i>
+      </button>
+      {% else %}
+      <span class="menu-toggle-placeholder"></span>
+      {% endif %}
+      <i class="bi {% if op.tipo == 'SUBMENU' %}bi-folder2{% elif op.tipo == 'RESPUESTA' %}bi-chat-left-text{% elif op.tipo == 'DERIVACION' %}bi-person-lines-fill{% elif op.tipo == 'VOLVER' %}bi-arrow-return-left{% elif op.tipo == 'INICIO' %}bi-house-door{% else %}bi-flag{% endif %} menu-icono-tipo"></i>
+      <div class="menu-card-texto">
+        <strong>{{ op.texto }}</strong>
+        <code class="text-muted small menu-slug">({{ op.slug }})</code>
+        {% if not op.activo %}<span class="badge bg-warning text-dark ms-1">Inactiva</span>{% endif %}
+        {% if op.archivo %}<i class="bi bi-paperclip text-muted ms-1" title="{{ op.archivo.nombre }}"></i>{% endif %}
+      </div>
+      {% if op.tipo == 'SUBMENU' %}<span class="badge bg-light text-secondary menu-count d-none" title="opciones adentro">0</span>{% endif %}
+      <span class="badge bg-secondary menu-badge-tipo">{{ op.get_tipo_display }}</span>
+      <div class="d-flex gap-1">
+        <button type="button" class="btn btn-outline-primary btn-sm btn-abrir-modal-chatbot"
+                data-url="{% url 'chatbot:editar_opcion' op.pk %}" title="Editar">
+          <i class="bi bi-pencil"></i>
+        </button>
+        <button type="button" class="btn btn-outline-danger btn-sm btn-abrir-modal-chatbot"
+                data-url="{% url 'chatbot:eliminar_opcion' op.pk %}" title="Eliminar">
+          <i class="bi bi-trash"></i>
+        </button>
+      </div>
+    </div>
+    {% if op.tipo == 'SUBMENU' %}
+      <div class="collapse menu-hijos" id="menu-hijos-{{ op.pk }}" data-nodo="{{ op.pk }}">
+        {% include 'chatbot/_menu_tree.html' with opciones=op.hijos.all opcion=op %}
+      </div>
+    {% endif %}
+  </div>
+  {% endfor %}
+  <div class="menu-drop-indicator {% if not opciones %}menu-drop-indicator-vacio{% endif %}"
+       data-parent="{% if opcion %}{{ opcion.pk }}{% else %}{% endif %}" data-before="">
+    {% if not opciones %}<i class="bi bi-inbox"></i> Sin opciones — soltá una acá{% endif %}
+  </div>
+</div>

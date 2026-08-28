@@ -1,0 +1,562 @@
+{% extends "base.html" %}
+{% load static %}
+{% block head %}
+<link rel="stylesheet" href="{% static 'css/styles-chatbot.css' %}?v=20260828d">
+{% endblock %}
+{% block content %}
+<div class="row mb-3 align-items-center">
+  <div class="col">
+    <h4 class="mb-0"><i class="bi bi-robot"></i> Panel de Chatbot</h4>
+  </div>
+  <div class="col-auto">
+    {% if perms.chatbot.gestionar_menu_chatbot %}
+    <button type="button" class="btn btn-primary btn-sm btn-abrir-modal-chatbot" data-url="{% url 'chatbot:crear_opcion' %}">
+      <i class="bi bi-plus-lg"></i> Nueva opción
+    </button>
+    {% endif %}
+  </div>
+</div>
+
+{% if messages %}
+  {% for msg in messages %}
+    <div class="alert alert-{{ msg.tags }} alert-dismissible fade show">
+      {{ msg }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+  {% endfor %}
+{% endif %}
+
+<ul class="nav nav-tabs mb-3" id="chatbot-tabs" role="tablist">
+  <li class="nav-item" role="presentation">
+    <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-menu" type="button" role="tab">
+      <i class="bi bi-diagram-3"></i> Menú
+    </button>
+  </li>
+  <li class="nav-item" role="presentation">
+    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-mensajes" type="button" role="tab">
+      <i class="bi bi-chat-heart"></i> Mensajes
+    </button>
+  </li>
+  <li class="nav-item" role="presentation">
+    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-api" type="button" role="tab">
+      <i class="bi bi-plug"></i> API y bandejas
+    </button>
+  </li>
+  <li class="nav-item" role="presentation">
+    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-horarios" type="button" role="tab">
+      <i class="bi bi-clock"></i> Horarios y días laborales
+    </button>
+  </li>
+</ul>
+
+<div class="tab-content">
+
+  {# ==================== MENÚ ==================== #}
+  <div class="tab-pane fade show active" id="tab-menu" role="tabpanel">
+    {% if perms.chatbot.gestionar_menu_chatbot %}
+    <div class="card shadow-sm border-0 mb-3">
+      <div class="card-body py-2">
+        <div class="d-flex align-items-center flex-wrap gap-2">
+          <span class="text-muted small me-1"><i class="bi bi-hand-index-thumb"></i> Arrastrá para agregar:</span>
+          <div class="paleta-item tipo-submenu" draggable="true" data-tipo="SUBMENU"><i class="bi bi-folder2"></i> Menú</div>
+          <div class="paleta-item tipo-respuesta" draggable="true" data-tipo="RESPUESTA"><i class="bi bi-chat-left-text"></i> Respuesta</div>
+          <div class="paleta-item tipo-derivacion" draggable="true" data-tipo="DERIVACION"><i class="bi bi-person-lines-fill"></i> Derivación</div>
+          <div class="paleta-item tipo-volver" draggable="true" data-tipo="VOLVER"><i class="bi bi-arrow-return-left"></i> Volver</div>
+          <div class="paleta-item tipo-inicio" draggable="true" data-tipo="INICIO"><i class="bi bi-house-door"></i> Ir al inicio</div>
+          <div class="paleta-item tipo-terminar" draggable="true" data-tipo="TERMINAR"><i class="bi bi-flag"></i> Terminar</div>
+          <div id="chatbot-menu-principal" class="ms-auto">
+            <i class="bi bi-house-door"></i> <span class="d-none d-sm-inline">Soltá acá para mandar al menú principal</span>
+          </div>
+          <div id="chatbot-papelera">
+            <i class="bi bi-trash"></i> <span class="d-none d-sm-inline">Soltá acá para eliminar</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="card shadow-sm border-0 mb-4">
+      <div class="card-body">
+        <h6 class="card-title"><i class="bi bi-diagram-3"></i> Menú principal</h6>
+        <p class="text-muted small">Estas son las opciones del menú principal. Un ítem de tipo <em>Menú</em> puede contener otras opciones adentro.</p>
+        {% include 'chatbot/_menu_tree.html' with opciones=opciones_raiz opcion=None %}
+      </div>
+    </div>
+
+    <div class="card shadow-sm border-0 mb-4" id="etiquetas-posibles">
+      <div class="card-body">
+        <h6 class="card-title"><i class="bi bi-tags"></i> Etiquetas del bot</h6>
+        <p class="text-muted small mb-3">
+          Se calculan a partir del árbol de menú.
+          Las <code>menu-*</code> son <strong>sólo para el log interno</strong> (no se aplican en chatealo).
+          Las <code>equipo-*</code> <strong>sí se aplican en chatealo</strong> al derivar, para transferir la
+          conversación al equipo; la anterior queda archivada como <code>hist-equipo-&lt;slug&gt;</code>.
+        </p>
+        <div class="row g-3">
+          <div class="col-md-6">
+            <div class="fw-semibold small mb-1"><i class="bi bi-diagram-3"></i> Navegación de menú (<code>menu-*</code>, sólo log)</div>
+            <ul class="list-unstyled small mb-0">
+              {% for e in etiquetas.menu %}
+              <li class="mb-1">
+                <code>{{ e.label }}</code> <span class="text-muted">— {{ e.origen }}</span>
+                {% if not e.activo %}<span class="badge bg-light text-secondary">inactiva</span>{% endif %}
+              </li>
+              {% endfor %}
+            </ul>
+          </div>
+          <div class="col-md-6">
+            <div class="fw-semibold small mb-1"><i class="bi bi-person-lines-fill"></i> Derivación a operador (<code>equipo-*</code>, se aplica en chatealo)</div>
+            {% if etiquetas.equipo %}
+            <ul class="list-unstyled small mb-0">
+              {% for e in etiquetas.equipo %}
+              <li class="mb-1">
+                <code>{{ e.label }}</code> <span class="text-muted">— {{ e.origenes|join:", " }}</span>
+                {% if not e.activo %}<span class="badge bg-light text-secondary">inactiva</span>{% endif %}
+              </li>
+              {% endfor %}
+            </ul>
+            {% else %}
+            <p class="text-muted small mb-0">No hay opciones de tipo Derivación en el menú.</p>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {# ==================== MENSAJES ==================== #}
+  <div class="tab-pane fade" id="tab-mensajes" role="tabpanel">
+    <p class="text-muted small">
+      Todos los mensajes admiten formato de WhatsApp. La vista previa muestra el ancho de un celular.
+      Donde hay variables, usá los botones con nombre entre llaves de la barra de formato para insertarlas.
+    </p>
+
+    <div class="card shadow-sm border-0 mb-4" id="saludos-config">
+      <div class="card-body">
+        <h6 class="card-title"><i class="bi bi-chat-heart"></i> Saludos del bot</h6>
+        <p class="text-muted small mb-3">
+          Encabezan el listado de opciones. El nombre del área va <strong>sin número</strong>;
+          sólo las opciones se numeran (<code>1 - ...</code>).
+        </p>
+        <form method="post" action="{% url 'chatbot:editar_saludos' %}">
+          {% csrf_token %}
+          <div class="mb-3" data-campo="mensaje_bienvenida" data-variables="nombre">
+            <label class="form-label fw-semibold small" for="{{ saludos_form.mensaje_bienvenida.id_for_label }}">
+              {{ saludos_form.mensaje_bienvenida.label }}
+            </label>
+            {{ saludos_form.mensaje_bienvenida }}
+            <div class="form-text">{{ saludos_form.mensaje_bienvenida.help_text }}</div>
+          </div>
+          <div class="mb-3" data-campo="plantilla_saludo_inicial" data-variables="nombre">
+            <label class="form-label fw-semibold small" for="{{ saludos_form.plantilla_saludo_inicial.id_for_label }}">
+              {{ saludos_form.plantilla_saludo_inicial.label }}
+            </label>
+            {{ saludos_form.plantilla_saludo_inicial }}
+            <div class="form-text">{{ saludos_form.plantilla_saludo_inicial.help_text }}</div>
+          </div>
+          <div class="mb-2" data-campo="plantilla_saludo_area" data-variables="area,nombre">
+            <label class="form-label fw-semibold small" for="{{ saludos_form.plantilla_saludo_area.id_for_label }}">
+              {{ saludos_form.plantilla_saludo_area.label }}
+            </label>
+            {{ saludos_form.plantilla_saludo_area }}
+            <div class="form-text">{{ saludos_form.plantilla_saludo_area.help_text }}</div>
+          </div>
+          {% if perms.chatbot.gestionar_menu_chatbot %}
+          <button type="submit" class="btn btn-outline-primary btn-sm mt-2"><i class="bi bi-save"></i> Guardar</button>
+          {% endif %}
+        </form>
+      </div>
+    </div>
+
+    <div class="card shadow-sm border-0 mb-4" id="tiempos-config">
+      <div class="card-body">
+        <h6 class="card-title"><i class="bi bi-clock-history"></i> Tiempos de espera</h6>
+        <p class="text-muted small mb-3">
+          Los procesa un cron cada minuto (comando <code>procesar_temporizadores_chatbot</code>).
+          Poné <code>0</code> para desactivar cada uno.
+        </p>
+        <form method="post" action="{% url 'chatbot:editar_tiempos' %}">
+          {% csrf_token %}
+          <div class="row g-3 align-items-start">
+            <div class="col-sm-auto">
+              <label class="form-label fw-semibold small" for="{{ tiempos_form.segundos_remostrar_menu.id_for_label }}">
+                {{ tiempos_form.segundos_remostrar_menu.label }}
+              </label>
+              {{ tiempos_form.segundos_remostrar_menu }}
+              <div class="form-text" style="max-width:260px">{{ tiempos_form.segundos_remostrar_menu.help_text }}</div>
+            </div>
+            <div class="col-sm-auto">
+              <label class="form-label fw-semibold small" for="{{ tiempos_form.minutos_inactividad_cierre.id_for_label }}">
+                {{ tiempos_form.minutos_inactividad_cierre.label }}
+              </label>
+              {{ tiempos_form.minutos_inactividad_cierre }}
+              <div class="form-text" style="max-width:260px">{{ tiempos_form.minutos_inactividad_cierre.help_text }}</div>
+            </div>
+          </div>
+          <div class="mt-3" data-campo="mensaje_cierre_inactividad" data-variables="nombre">
+            <label class="form-label fw-semibold small" for="{{ tiempos_form.mensaje_cierre_inactividad.id_for_label }}">
+              {{ tiempos_form.mensaje_cierre_inactividad.label }}
+            </label>
+            {{ tiempos_form.mensaje_cierre_inactividad }}
+            <div class="form-text">{{ tiempos_form.mensaje_cierre_inactividad.help_text }}</div>
+          </div>
+          {% if perms.chatbot.gestionar_menu_chatbot %}
+          <button type="submit" class="btn btn-outline-primary btn-sm mt-2"><i class="bi bi-save"></i> Guardar</button>
+          {% endif %}
+        </form>
+      </div>
+    </div>
+
+    <div class="card shadow-sm border-0 mb-4" id="mensaje-despedida-config">
+      <div class="card-body">
+        <h6 class="card-title"><i class="bi bi-flag"></i> Mensaje de despedida</h6>
+        <p class="text-muted small mb-3">
+          Único para todo el árbol: lo mandan todas las opciones tipo "Terminar" sin importar en qué
+          menú estén.
+        </p>
+        <form method="post" action="{% url 'chatbot:editar_despedida' %}">
+          {% csrf_token %}
+          <div class="mb-3" data-campo="mensaje_despedida" data-variables="nombre">
+            <label class="form-label fw-semibold small" for="{{ despedida_form.mensaje_despedida.id_for_label }}">
+              {{ despedida_form.mensaje_despedida.label }}
+            </label>
+            {{ despedida_form.mensaje_despedida }}
+            <div class="form-text">{{ despedida_form.mensaje_despedida.help_text }}</div>
+          </div>
+          <div class="mb-2" style="max-width: 320px;">
+            <label class="form-label fw-semibold small">{{ despedida_form.archivo_despedida.label }}</label>
+            {{ despedida_form.archivo_despedida }}
+          </div>
+          {% if perms.chatbot.gestionar_menu_chatbot %}
+          <button type="submit" class="btn btn-outline-primary btn-sm mt-2"><i class="bi bi-save"></i> Guardar</button>
+          {% endif %}
+        </form>
+      </div>
+    </div>
+  </div>
+
+  {# ==================== API Y BANDEJAS ==================== #}
+  <div class="tab-pane fade" id="tab-api" role="tabpanel">
+    <div class="card shadow-sm border-0 mb-4">
+      <div class="card-body">
+        <h6 class="card-title"><i class="bi bi-plug"></i> Conexión con chatealo.io</h6>
+        <p class="text-muted small mb-3">
+          Registrá esta URL como webhook en chatealo (eventos <code>message_created</code>,
+          <code>message_updated</code>, <code>conversation_created</code> y <code>conversation_status_changed</code>).
+        </p>
+
+        <div class="mb-3">
+          <label class="form-label fw-semibold small">URL del webhook a registrar en chatealo</label>
+          <div class="input-group input-group-sm">
+            <input type="text" class="form-control" readonly id="webhook-url"
+                   value="{{ request.scheme }}://{{ request.get_host }}{% url 'chatbot:webhook_chatealo' secret=config.webhook_secret %}">
+            <button class="btn btn-outline-secondary" type="button" onclick="
+              navigator.clipboard.writeText(document.getElementById('webhook-url').value);
+            "><i class="bi bi-clipboard"></i></button>
+          </div>
+          {% if perms.chatbot.gestionar_token_chatbot %}
+          <div class="d-flex flex-wrap gap-2 mt-2">
+            <button type="button" class="btn btn-outline-primary btn-sm" id="btn-listar-webhooks"
+                    data-url="{% url 'chatbot:webhooks_listar' %}">
+              <i class="bi bi-list-check"></i> Ver webhooks registrados
+            </button>
+            <button type="button" class="btn btn-outline-success btn-sm" id="btn-registrar-webhook"
+                    data-url="{% url 'chatbot:webhooks_registrar' %}">
+              <i class="bi bi-plus-circle"></i> Registrar este webhook
+            </button>
+            <form method="post" action="{% url 'chatbot:regenerar_webhook_secret' %}"
+                  onsubmit="return confirm('La URL anterior deja de funcionar de inmediato. Vas a tener que actualizarla en chatealo. ¿Continuar?');">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-outline-danger btn-sm">
+                <i class="bi bi-arrow-repeat"></i> Regenerar secreto
+              </button>
+            </form>
+          </div>
+          <div id="webhooks-registrados" class="small mt-2"></div>
+          {% endif %}
+        </div>
+
+        <hr>
+
+        <p class="text-muted small mb-2">Credenciales para llamar a la API de chatealo (enviar mensajes, etiquetas):</p>
+        <form method="post" action="{% url 'chatbot:editar_config' %}">
+          {% csrf_token %}
+          <div class="row g-2">
+            <div class="col-md-6">
+              <label class="form-label fw-semibold small">{{ config_form.chatealo_base_url.label }}</label>
+              {{ config_form.chatealo_base_url }}
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold small">{{ config_form.chatealo_account_id.label }}</label>
+              {{ config_form.chatealo_account_id }}
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-semibold small">{{ config_form.chatealo_authorization.label }}</label>
+              {{ config_form.chatealo_authorization }}
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-semibold small">{{ config_form.chatealo_admin_id.label }}</label>
+              {{ config_form.chatealo_admin_id }}
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-semibold small">{{ config_form.chatealo_user_token.label }}</label>
+              {{ config_form.chatealo_user_token }}
+            </div>
+            <div class="col-md-8">
+              <label class="form-label fw-semibold small">{{ config_form.webhook_firma_secret.label }}</label>
+              {{ config_form.webhook_firma_secret }}
+              <div class="form-text">{{ config_form.webhook_firma_secret.help_text }}</div>
+            </div>
+            <div class="col-md-4 d-flex align-items-center">
+              <div class="form-check mt-3">
+                {{ config_form.webhook_firma_enforce }}
+                <label class="form-check-label small" for="{{ config_form.webhook_firma_enforce.id_for_label }}">
+                  {{ config_form.webhook_firma_enforce.label }}
+                </label>
+              </div>
+            </div>
+          </div>
+          {% if perms.chatbot.gestionar_token_chatbot %}
+          <button type="submit" class="btn btn-outline-primary btn-sm mt-2"><i class="bi bi-save"></i> Guardar</button>
+          {% endif %}
+        </form>
+        <small class="text-muted d-block mt-2">Último uso del webhook: {{ config.ultimo_uso|default:'nunca' }}</small>
+      </div>
+    </div>
+
+    <div class="card shadow-sm border-0 mb-4" id="inboxes">
+      <div class="card-body">
+        <h6 class="card-title"><i class="bi bi-inboxes"></i> Bandejas de chatealo</h6>
+        <p class="text-muted small mb-3">
+          El webhook recibe eventos de <strong>todas</strong> las bandejas de la cuenta. Se van
+          listando solas a medida que llegan eventos; asociales un nombre y el tipo de fuente.
+        </p>
+        {% if inboxes %}
+        <div class="table-responsive">
+          <table class="table table-sm align-middle mb-0">
+            <thead>
+              <tr class="small text-muted">
+                <th>Inbox ID</th><th>Detectado</th><th>Nombre</th><th>Tipo de fuente</th><th>Bot</th><th>Eventos</th><th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for inbox, form in inboxes %}
+              <tr>
+                <td class="text-nowrap"><code>{{ inbox.inbox_id }}</code></td>
+                <td class="small text-muted">
+                  {{ inbox.nombre_detectado|default:'—' }}
+                  {% if inbox.channel_detectado %}<br><span class="badge bg-light text-dark">{{ inbox.channel_detectado }}</span>{% endif %}
+                  {% if not inbox.tipo_fuente and inbox.tipo_fuente_sugerido %}
+                    <br><span class="text-success">sugerido: {{ inbox.tipo_fuente_sugerido }}</span>
+                  {% endif %}
+                </td>
+                <td colspan="4">
+                  <form method="post" action="{% url 'chatbot:editar_inbox' inbox.pk %}">
+                    {% csrf_token %}
+                    <div class="row g-2 align-items-center">
+                      <div class="col-sm-4">{{ form.nombre }}</div>
+                      <div class="col-sm-3">{{ form.tipo_fuente }}</div>
+                      <div class="col-sm-2 form-check ms-2">
+                        {{ form.responder_bot }}
+                        <label class="form-check-label small" for="{{ form.responder_bot.id_for_label }}">Responder</label>
+                      </div>
+                      <div class="col-sm-2">
+                        {% if perms.chatbot.gestionar_inboxes_chatbot %}
+                        <button type="submit" class="btn btn-outline-primary btn-sm"><i class="bi bi-save"></i></button>
+                        {% endif %}
+                      </div>
+                    </div>
+                  </form>
+                </td>
+                <td class="small text-muted text-nowrap">
+                  {{ inbox.eventos_recibidos }}
+                  {% if inbox.ultimo_evento %}<br>{{ inbox.ultimo_evento|date:'d/m/y H:i' }}{% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <p class="text-muted small mb-0">Todavía no llegó ningún evento del webhook.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  {# ==================== HORARIOS ==================== #}
+  <div class="tab-pane fade" id="tab-horarios" role="tabpanel">
+    <p class="text-muted small">
+      Definen cuándo el bot puede derivar a un operador. Fuera de horario avisa el próximo horario
+      de apertura en vez de derivar.
+      <a href="{% url 'chatbot:lista_horarios' %}" target="_blank" class="ms-1">abrir en pantalla completa <i class="bi bi-box-arrow-up-right"></i></a>
+    </p>
+    <ul class="nav nav-pills mb-3" id="horarios-subtabs" role="tablist">
+      <li class="nav-item" role="presentation">
+        <button class="nav-link active" data-bs-toggle="pill" data-bs-target="#sub-semanal"
+                data-src="{% url 'chatbot:lista_horarios' %}?embed=1" type="button" role="tab">
+          <i class="bi bi-calendar-week"></i> Horario semanal
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" data-bs-toggle="pill" data-bs-target="#sub-excepciones"
+                data-src="{% url 'chatbot:calendario_excepciones' %}?embed=1" type="button" role="tab">
+          <i class="bi bi-calendar-event"></i> Días laborables y excepciones
+        </button>
+      </li>
+    </ul>
+    <div class="tab-content">
+      <div class="tab-pane fade show active" id="sub-semanal" role="tabpanel">
+        <iframe class="chatbot-embed" title="Horario semanal" scrolling="no" loading="lazy"></iframe>
+      </div>
+      <div class="tab-pane fade" id="sub-excepciones" role="tabpanel">
+        <iframe class="chatbot-embed" title="Días excepcionales" scrolling="no" loading="lazy"></iframe>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="modal fade" id="chatbot-modal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-body text-center text-muted py-5">
+        <div class="spinner-border" role="status"></div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block foot %}
+<script>
+document.querySelectorAll('form input:not([type=checkbox]):not([type=radio]):not([readonly]), form textarea')
+  .forEach(el => el.classList.add('form-control'));
+document.querySelectorAll('form:not(.form-modal-chatbot) select')
+  .forEach(el => el.classList.add('form-select'));
+window.CHATBOT_REORDENAR_URL = "{% url 'chatbot:reordenar_opciones' %}";
+window.CHATBOT_CREAR_OPCION_URL = "{% url 'chatbot:crear_opcion' %}";
+
+// activar la pestaña que corresponda al #hash (tras guardar un form) y mantenerlo al cambiar
+(function () {
+  function activarDesdeHash() {
+    var h = location.hash;
+    if (!h || !window.bootstrap) return;
+    var destino = document.querySelector(h);
+    var pane = destino ? destino.closest('.tab-pane') : null;
+    if (!pane) return;
+    var btn = document.querySelector('[data-bs-target="#' + pane.id + '"]');
+    if (btn) bootstrap.Tab.getOrCreateInstance(btn).show();
+  }
+  activarDesdeHash();
+  document.querySelectorAll('#chatbot-tabs [data-bs-toggle="tab"]').forEach(function (b) {
+    b.addEventListener('shown.bs.tab', function (e) {
+      history.replaceState(null, '', e.target.getAttribute('data-bs-target'));
+    });
+  });
+})();
+
+// Iframes de Horarios: carga diferida + alto ajustado al contenido (sin scroll interno).
+(function () {
+  function ajustar(iframe) {
+    var doc;
+    try { doc = iframe.contentDocument || (iframe.contentWindow && iframe.contentWindow.document); }
+    catch (e) { return; }
+    if (!doc || !doc.body) return;
+    var alto = Math.max(doc.body.scrollHeight, doc.documentElement.scrollHeight);
+    if (alto > 0) iframe.style.height = (alto + 4) + 'px';
+  }
+  function preparar(iframe) {
+    if (iframe.dataset.autoAlturaListo) return;
+    iframe.dataset.autoAlturaListo = '1';
+    iframe.addEventListener('load', function () {
+      var doc;
+      try { doc = iframe.contentDocument; } catch (e) { return; }
+      if (iframe._ro) { try { iframe._ro.disconnect(); } catch (e) {} }
+      ajustar(iframe);
+      setTimeout(function () { ajustar(iframe); }, 300);
+      setTimeout(function () { ajustar(iframe); }, 1200);
+      if (doc && doc.body && window.ResizeObserver) {
+        iframe._ro = new ResizeObserver(function () { ajustar(iframe); });
+        iframe._ro.observe(doc.body);
+      } else if (doc) {
+        doc.addEventListener('click', function () { setTimeout(function () { ajustar(iframe); }, 200); });
+      }
+    });
+  }
+  function cargar(btn) {
+    if (!btn || !btn.dataset.src) return;
+    var pane = document.querySelector(btn.getAttribute('data-bs-target'));
+    var iframe = pane && pane.querySelector('iframe.chatbot-embed');
+    if (!iframe) return;
+    preparar(iframe);
+    if (!iframe.getAttribute('src')) iframe.setAttribute('src', btn.dataset.src);
+    else ajustar(iframe);  // re-medir al volver a mostrar la sub-solapa
+  }
+  document.querySelectorAll('#horarios-subtabs [data-bs-toggle="pill"]').forEach(function (b) {
+    b.addEventListener('shown.bs.tab', function (e) { cargar(e.target); });
+  });
+  var mainBtn = document.querySelector('#chatbot-tabs [data-bs-target="#tab-horarios"]');
+  var cargarActivo = function () { cargar(document.querySelector('#horarios-subtabs .nav-link.active')); };
+  if (mainBtn) mainBtn.addEventListener('shown.bs.tab', cargarActivo);
+  if (location.hash === '#tab-horarios') cargarActivo();
+})();
+
+(function () {
+  const cont = document.getElementById('webhooks-registrados');
+  const btnListar = document.getElementById('btn-listar-webhooks');
+  const btnRegistrar = document.getElementById('btn-registrar-webhook');
+  if (!cont || !btnListar) return;
+  const csrf = () => (document.querySelector('[name=csrfmiddlewaretoken]') || {}).value || '';
+  const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, c => (
+    {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
+
+  function pintarLista(data) {
+    const actual = (data.url_actual || '').replace(/\/$/, '');
+    if (!data.webhooks || !data.webhooks.length) {
+      cont.innerHTML = '<span class="text-muted">No hay webhooks registrados en chatealo.</span>';
+      return;
+    }
+    const filas = data.webhooks.map(w => {
+      const esActual = (w.url || '').replace(/\/$/, '') === actual;
+      const subs = (w.subscriptions || []).join(', ');
+      return `<li class="${esActual ? 'fw-semibold text-success' : ''}">
+        <code>#${esc(w.id)}</code> ${esc(w.url)} <span class="text-muted">[${esc(subs)}]</span>
+        ${esActual ? ' <i class="bi bi-check-circle"></i> este' : ''}</li>`;
+    }).join('');
+    cont.innerHTML = `<ul class="mb-0 ps-3">${filas}</ul>`;
+  }
+
+  function llamar(btn, url, then) {
+    const prev = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+    fetch(url, {method: 'POST', headers: {'X-CSRFToken': csrf(), 'X-Requested-With': 'XMLHttpRequest'}})
+      .then(r => r.json())
+      .then(data => {
+        if (!data.ok) {
+          cont.innerHTML = `<span class="text-danger">${esc(data.error || 'Error')}</span>`;
+        } else { then(data); }
+      })
+      .catch(e => { cont.innerHTML = `<span class="text-danger">${esc(e)}</span>`; })
+      .finally(() => { btn.disabled = false; btn.innerHTML = prev; });
+  }
+
+  btnListar.addEventListener('click', () => llamar(btnListar, btnListar.dataset.url, pintarLista));
+
+  if (btnRegistrar) {
+    btnRegistrar.addEventListener('click', () => {
+      if (!confirm('Registrar la URL actual como webhook en chatealo (message_created + message_updated + conversation_created + conversation_status_changed)?')) return;
+      llamar(btnRegistrar, btnRegistrar.dataset.url, () => {
+        cont.innerHTML = '<span class="text-success">Webhook registrado.</span>';
+        llamar(btnListar, btnListar.dataset.url, pintarLista);
+      });
+    });
+  }
+})();
+</script>
+<script src="{% static 'js/chatbot_wa_editor.js' %}?v=20260828d"></script>
+<script src="{% static 'js/chatbot_menu.js' %}?v=20260828d"></script>
+<script>
+if (window.iniciarEditoresWhatsApp) window.iniciarEditoresWhatsApp(document);
+</script>
+{% endblock %}

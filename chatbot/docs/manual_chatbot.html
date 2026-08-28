@@ -1,0 +1,630 @@
+<title>Manual del Chatbot</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    --ground: #f6f6f4;
+    --surface: #ffffff;
+    --surface-2: #fbfbf9;
+    --ink: #1b2028;
+    --ink-soft: #5a636f;
+    --ink-faint: #8b939e;
+    --accent: #1f6feb;
+    --accent-ink: #14498f;
+    --accent-wash: #e9f0fd;
+    --rule: #e4e4e0;
+    --rule-strong: #d3d4cf;
+    --ok: #1f8a4c;
+    --ok-wash: #e6f4ec;
+    --warn: #b06e12;
+    --warn-wash: #f8efdd;
+    --danger: #c23b3b;
+    --danger-wash: #f8e6e6;
+    --code-bg: #f0f1ee;
+    --shadow: 0 1px 2px rgba(20,25,35,.05), 0 8px 24px -12px rgba(20,25,35,.18);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #12151b;
+      --surface: #1a1e26;
+      --surface-2: #1f242d;
+      --ink: #e8eaef;
+      --ink-soft: #a4adba;
+      --ink-faint: #79828f;
+      --accent: #5b9bff;
+      --accent-ink: #a8c8ff;
+      --accent-wash: #1a2b48;
+      --rule: #2b313c;
+      --rule-strong: #3a414e;
+      --ok: #4cc27e;
+      --ok-wash: #16311f;
+      --warn: #dca24e;
+      --warn-wash: #362a13;
+      --danger: #e07a7a;
+      --danger-wash: #3a1e1e;
+      --code-bg: #242a34;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 10px 30px -14px rgba(0,0,0,.55);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #12151b;
+    --surface: #1a1e26;
+    --surface-2: #1f242d;
+    --ink: #e8eaef;
+    --ink-soft: #a4adba;
+    --ink-faint: #79828f;
+    --accent: #5b9bff;
+    --accent-ink: #a8c8ff;
+    --accent-wash: #1a2b48;
+    --rule: #2b313c;
+    --rule-strong: #3a414e;
+    --ok: #4cc27e;
+    --ok-wash: #16311f;
+    --warn: #dca24e;
+    --warn-wash: #362a13;
+    --danger: #e07a7a;
+    --danger-wash: #3a1e1e;
+    --code-bg: #242a34;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 10px 30px -14px rgba(0,0,0,.55);
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; scroll-padding-top: 2rem; }
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: "IBM Plex Sans", system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    font-size: 16px;
+    line-height: 1.62;
+    -webkit-font-smoothing: antialiased;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+  }
+
+  .wrap {
+    max-width: 1140px;
+    margin: 0 auto;
+    padding: 0 clamp(1rem, 4vw, 2.5rem) 6rem;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+  @media (min-width: 1000px) {
+    .wrap { grid-template-columns: 232px minmax(0, 1fr); column-gap: 3.5rem; }
+    .masthead { grid-column: 1 / -1; }
+  }
+
+  /* ---- masthead ---- */
+  .masthead {
+    padding: clamp(2.6rem, 7vw, 4.6rem) 0 2.4rem;
+    border-bottom: 1px solid var(--rule);
+    margin-bottom: 2.8rem;
+  }
+  .eyebrow {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: .74rem;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--accent-ink);
+    margin: 0 0 1rem;
+  }
+  h1 {
+    font-family: "Bricolage Grotesque", sans-serif;
+    font-weight: 700;
+    font-size: clamp(2.1rem, 5.4vw, 3.3rem);
+    line-height: 1.04;
+    letter-spacing: -.02em;
+    text-wrap: balance;
+    margin: 0 0 1rem;
+  }
+  .lede {
+    font-size: clamp(1.02rem, 2vw, 1.16rem);
+    color: var(--ink-soft);
+    max-width: 64ch;
+    margin: 0;
+  }
+  .meta-row {
+    margin-top: 1.8rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem .55rem;
+  }
+  .tag {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: .76rem;
+    padding: .28rem .6rem;
+    border: 1px solid var(--rule-strong);
+    border-radius: 999px;
+    color: var(--ink-soft);
+    background: var(--surface);
+  }
+
+  /* ---- table of contents ---- */
+  nav.toc { display: none; }
+  @media (min-width: 1000px) {
+    nav.toc {
+      display: block;
+      position: sticky;
+      top: 2rem;
+      align-self: start;
+      font-size: .875rem;
+    }
+    nav.toc p {
+      font-family: "IBM Plex Mono", monospace;
+      font-size: .7rem;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--ink-faint);
+      margin: 0 0 .8rem;
+    }
+    nav.toc ol { list-style: none; margin: 0; padding: 0; counter-reset: toc; }
+    nav.toc li { counter-increment: toc; margin: .15rem 0; }
+    nav.toc a {
+      display: block;
+      padding: .32rem .55rem .32rem .5rem;
+      border-left: 2px solid var(--rule);
+      color: var(--ink-soft);
+      text-decoration: none;
+      border-radius: 0 5px 5px 0;
+      transition: color .12s, border-color .12s, background .12s;
+    }
+    nav.toc a::before {
+      content: counter(toc, decimal-leading-zero) "  ";
+      font-family: "IBM Plex Mono", monospace;
+      font-size: .78rem;
+      color: var(--ink-faint);
+    }
+    nav.toc a:hover { color: var(--ink); border-left-color: var(--accent); background: var(--accent-wash); }
+  }
+
+  /* ---- content ---- */
+  main { min-width: 0; }
+  section { margin-bottom: 4rem; scroll-margin-top: 1.5rem; }
+  section > h2 {
+    font-family: "Bricolage Grotesque", sans-serif;
+    font-weight: 700;
+    font-size: clamp(1.5rem, 3.4vw, 2rem);
+    letter-spacing: -.015em;
+    line-height: 1.12;
+    text-wrap: balance;
+    margin: 0 0 .3rem;
+    padding-top: 1.2rem;
+  }
+  section > h2 .num {
+    font-family: "IBM Plex Mono", monospace;
+    font-weight: 500;
+    font-size: .82em;
+    color: var(--accent);
+    margin-right: .6rem;
+  }
+  section > .section-note {
+    color: var(--ink-soft);
+    max-width: 66ch;
+    margin: 0 0 1.8rem;
+  }
+  h3 {
+    font-family: "Bricolage Grotesque", sans-serif;
+    font-weight: 600;
+    font-size: 1.14rem;
+    letter-spacing: -.01em;
+    margin: 2.4rem 0 .5rem;
+  }
+  p { max-width: 68ch; }
+  main a { color: var(--accent-ink); text-underline-offset: 2px; }
+  strong { font-weight: 600; }
+  code {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: .86em;
+    background: var(--code-bg);
+    padding: .1em .38em;
+    border-radius: 4px;
+    word-break: break-word;
+  }
+  ul, ol { max-width: 68ch; padding-left: 1.3rem; }
+  li { margin: .3rem 0; }
+  li::marker { color: var(--ink-faint); }
+
+  /* ---- figure ---- */
+  figure {
+    margin: 1.8rem 0 2rem;
+    background: var(--surface-2);
+    border: 1px solid var(--rule);
+    border-radius: 12px;
+    padding: .7rem .7rem .1rem;
+    box-shadow: var(--shadow);
+  }
+  figure img {
+    display: block;
+    width: auto;
+    max-width: 100%;
+    height: auto;
+    max-height: 230mm;
+    margin: 0 auto;
+    border-radius: 7px;
+    border: 1px solid var(--rule);
+  }
+  figure { break-inside: avoid; }
+  figure figcaption {
+    font-size: .84rem;
+    color: var(--ink-soft);
+    padding: .7rem .5rem .8rem;
+  }
+  figure figcaption b { color: var(--ink); font-weight: 600; }
+  section > h2, h3 { break-after: avoid; }
+
+  /* ---- callout ---- */
+  .callout {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: .5rem .8rem;
+    align-items: start;
+    margin: 1.4rem 0;
+    padding: .95rem 1.1rem;
+    border-radius: 10px;
+    border: 1px solid var(--rule-strong);
+    background: var(--surface);
+    max-width: 72ch;
+  }
+  .callout .ico {
+    font-family: "IBM Plex Mono", monospace;
+    font-weight: 500;
+    font-size: .72rem;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    padding: .12rem .45rem;
+    border-radius: 5px;
+    white-space: nowrap;
+  }
+  .callout p { margin: 0; }
+  .callout p + p { margin-top: .5rem; }
+  .callout.tip { background: var(--accent-wash); border-color: color-mix(in srgb, var(--accent) 30%, transparent); }
+  .callout.tip .ico { background: var(--accent); color: #fff; }
+  .callout.warn { background: var(--warn-wash); border-color: color-mix(in srgb, var(--warn) 34%, transparent); }
+  .callout.warn .ico { background: var(--warn); color: #fff; }
+  .callout.danger { background: var(--danger-wash); border-color: color-mix(in srgb, var(--danger) 34%, transparent); }
+  .callout.danger .ico { background: var(--danger); color: #fff; }
+
+  /* ---- reference table ---- */
+  .tbl-scroll { overflow-x: auto; margin: 1.4rem 0; border: 1px solid var(--rule); border-radius: 10px; }
+  table { border-collapse: collapse; width: 100%; font-size: .92rem; }
+  thead th {
+    text-align: left;
+    font-family: "IBM Plex Mono", monospace;
+    font-weight: 500;
+    font-size: .72rem;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    background: var(--surface-2);
+    padding: .7rem .9rem;
+    border-bottom: 1px solid var(--rule-strong);
+  }
+  tbody td { padding: .7rem .9rem; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  tbody tr:last-child td { border-bottom: 0; }
+  tbody td:first-child { white-space: nowrap; }
+
+  /* ---- type chips ---- */
+  .types { display: flex; flex-wrap: wrap; gap: .5rem; margin: 1.2rem 0 .4rem; }
+  .types .t {
+    font-size: .82rem;
+    padding: .3rem .65rem;
+    border-radius: 7px;
+    border: 1px solid var(--rule-strong);
+    background: var(--surface);
+    border-left-width: 4px;
+  }
+  .t.menu { border-left-color: #1f6feb; }
+  .t.resp { border-left-color: #1f8a4c; }
+  .t.deriv { border-left-color: #d97a1a; }
+  .t.volver { border-left-color: #7048c4; }
+  .t.inicio { border-left-color: #17b39a; }
+  .t.term { border-left-color: #c23b3b; }
+
+  hr.soft { border: 0; border-top: 1px solid var(--rule); margin: 3.2rem 0; }
+  footer {
+    grid-column: 1 / -1;
+    border-top: 1px solid var(--rule);
+    margin-top: 2rem;
+    padding-top: 1.6rem;
+    font-size: .84rem;
+    color: var(--ink-faint);
+  }
+  footer code { font-size: .82rem; }
+</style>
+
+<div class="wrap">
+  <header class="masthead">
+    <p class="eyebrow">Manual de uso · Panel de administración</p>
+    <h1>Manual del Chatbot</h1>
+    <p class="lede">Cómo armar el menú, escribir los mensajes, conectar la cuenta de chatealo y
+      definir los horarios del asistente de WhatsApp — desde el panel, sin tocar código.</p>
+    <div class="meta-row">
+      <span class="tag">Menú &rsaquo; Chatbot</span>
+      <span class="tag">Permiso: admin_chatbot</span>
+      <span class="tag">v. 2026-08</span>
+      <span class="tag">sin capturas</span>
+    </div>
+  </header>
+
+  <nav class="toc" aria-label="Contenido">
+    <p>Contenido</p>
+    <ol>
+      <li><a href="#intro">Empezar</a></li>
+      <li><a href="#menu">El árbol de menú</a></li>
+      <li><a href="#mensajes">Los mensajes del bot</a></li>
+      <li><a href="#tiempos">Tiempos de espera</a></li>
+      <li><a href="#api">Conexión con chatealo</a></li>
+      <li><a href="#horarios">Horarios y días laborales</a></li>
+      <li><a href="#comportamiento">Cómo responde el bot</a></li>
+      <li><a href="#problemas">Problemas frecuentes</a></li>
+    </ol>
+  </nav>
+
+  <main>
+
+    <section id="intro">
+      <h2><span class="num">01</span>Empezar</h2>
+      <p class="section-note">El chatbot es un menú de opciones que responde por WhatsApp. Cuando alguien
+        escribe, el bot le muestra un listado numerado; según el número que elija, le contesta un texto,
+        lo lleva a otro menú o lo deriva a una persona.</p>
+
+      <h3>Cómo entrar</h3>
+      <p>En la barra superior del sistema, menú <strong>Chatbot</strong>. Ahí están:
+        <strong>Panel / Menú</strong> (donde se configura todo), <strong>Conversaciones</strong>
+        (el historial de lo que hizo el bot con cada contacto), <strong>Repositorio de archivos</strong>
+        y los <strong>Horarios</strong>.</p>
+
+      <h3>Permisos</h3>
+      <p>Para administrar el chatbot completo hay que tener asignado el grupo
+        <code>admin_chatbot</code>. Si sólo se necesita ver el panel sin editar, alcanza con el permiso
+        <code>ver_panel_chatbot</code>. Los permisos se asignan desde la ficha del usuario, igual que
+        para el resto del sistema.</p>
+
+      <h3>Las cuatro pestañas del panel</h3>
+      <p>Todo se organiza en pestañas. Cada una se guarda por separado con su propio botón
+        <strong>Guardar</strong>:</p>
+      <ul>
+        <li><strong>Menú</strong> — el árbol de opciones que ve el contacto.</li>
+        <li><strong>Mensajes</strong> — los textos que manda el bot (saludos, despedida) y los tiempos de espera.</li>
+        <li><strong>API y bandejas</strong> — la conexión con chatealo y las bandejas de WhatsApp/web.</li>
+        <li><strong>Horarios y días laborales</strong> — cuándo el bot puede derivar a una persona.</li>
+      </ul>
+    </section>
+
+    <hr class="soft">
+
+    <section id="menu">
+      <h2><span class="num">02</span>El árbol de menú</h2>
+      <p class="section-note">El menú es un árbol: opciones que pueden contener otras opciones adentro.
+        La primera columna del contacto siempre es el <strong>menú principal</strong>.</p>
+
+      <h3>Tipos de opción</h3>
+      <p>Al agregar una opción elegís qué hace:</p>
+      <div class="types">
+        <span class="t menu"><strong>Menú</strong> — agrupa otras opciones adentro</span>
+        <span class="t resp"><strong>Respuesta</strong> — el bot contesta un texto</span>
+        <span class="t deriv"><strong>Derivación</strong> — pasa la charla a una persona</span>
+        <span class="t volver"><strong>Volver</strong> — al menú anterior</span>
+        <span class="t inicio"><strong>Ir al inicio</strong> — al menú principal</span>
+        <span class="t term"><strong>Terminar</strong> — cierra la conversación</span>
+      </div>
+      <p>Volver, Ir al inicio y Terminar no llevan texto propio: son sólo navegación. El mensaje de
+        "Terminar" es único y se edita en la pestaña Mensajes.</p>
+
+      <h3>Agregar una opción</h3>
+      <p>Arrastrá un chip de la paleta hasta el lugar del árbol donde la querés. Se abre una ventana
+        para completar el nombre y, si corresponde, el texto de la respuesta o el mensaje de derivación.
+        También podés usar el botón <strong>Nueva opción</strong> arriba a la derecha.</p>
+
+      <h3>Editar, reordenar y borrar</h3>
+      <ul>
+        <li><strong>Editar:</strong> el lápiz de cada tarjeta abre la ventana de edición.</li>
+        <li><strong>Reordenar:</strong> arrastrá la tarjeta por el ícono de puntitos. El orden en que
+          queden es el orden en que el contacto ve las opciones (numeradas <code>1 -</code>,
+          <code>2 -</code>…).</li>
+        <li><strong>Anidar:</strong> soltá una tarjeta dentro de un <em>Menú</em> abierto para meterla adentro.</li>
+        <li><strong>Borrar:</strong> el tacho. Si la opción tiene otras adentro, se borran también.</li>
+      </ul>
+
+      <h3>Abrir y cerrar menús</h3>
+      <p>Cada <em>Menú</em> tiene una flechita para abrirlo o cerrarlo. Arrancan cerrados; abrís sólo
+        el que estás editando. <strong>Sólo se puede arrastrar dentro de un menú abierto</strong> (o al
+        menú principal). El sistema recuerda cuáles dejaste abiertos.</p>
+
+      <h3>El <code>slug</code></h3>
+      <p>Es el nombre corto entre paréntesis (<code>beneficios</code>, <code>turismo</code>…). Se
+        autogenera del texto y sirve para las etiquetas internas. Sólo cambialo si sabés lo que hacés.</p>
+    </section>
+
+    <hr class="soft">
+
+    <section id="mensajes">
+      <h2><span class="num">03</span>Los mensajes del bot</h2>
+      <p class="section-note">Todos los textos que manda el bot se editan acá, con un editor con formato
+        de WhatsApp y vista previa. Si un campo se deja vacío, el bot usa un texto por defecto — que
+        aparece escrito en gris para que veas exactamente qué se va a enviar.</p>
+
+      <h3>Los saludos</h3>
+      <div class="tbl-scroll">
+        <table>
+          <thead><tr><th>Campo</th><th>Cuándo se usa</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Mensaje de bienvenida</strong></td><td>Una sola vez, la primera vez que el contacto escribe, antes del menú. Sirve para aclarar que del otro lado hay un asistente automático.</td></tr>
+            <tr><td><strong>Saludo del menú principal</strong></td><td>Encabeza el listado de opciones del menú principal.</td></tr>
+            <tr><td><strong>Saludo de cada menú</strong></td><td>Encabeza el listado al entrar a un menú. Con la variable <code>{area}</code> se inserta el nombre de ese menú.</td></tr>
+            <tr><td><strong>Mensaje de despedida</strong></td><td>Lo mandan todas las opciones tipo "Terminar", sin importar en qué menú estén.</td></tr>
+            <tr><td><strong>Mensaje de cierre por inactividad</strong></td><td>Se manda al cerrar una conversación porque el contacto dejó de responder (ver la sección siguiente).</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Variables</h3>
+      <p>Donde el campo lo permite, hay botones en la barra para insertar variables. El bot las
+        reemplaza al enviar:</p>
+      <ul>
+        <li><code>{nombre}</code> — el nombre del contacto (queda vacío si no lo tenemos).</li>
+        <li><code>{area}</code> — el nombre del menú donde está parado el contacto (sólo en "Saludo de cada menú").</li>
+      </ul>
+
+      <h3>Formato de WhatsApp</h3>
+      <p>La barra escribe el formato que entiende WhatsApp: <code>*negrita*</code>, <code>_itálica_</code>,
+        <code>~tachado~</code>, monoespaciado y emojis. Los links (<code>http://…</code>) se detectan
+        solos, no hace falta marcarlos. La vista previa muestra cómo le va a llegar al contacto.</p>
+    </section>
+
+    <hr class="soft">
+
+    <section id="tiempos">
+      <h2><span class="num">04</span>Tiempos de espera</h2>
+      <p class="section-note">En la misma pestaña Mensajes, la tarjeta <strong>Tiempos de espera</strong>
+        controla dos comportamientos automáticos. Poné <code>0</code> para desactivar cualquiera de los dos.</p>
+
+      <div class="tbl-scroll">
+        <table>
+          <thead><tr><th>Ajuste</th><th>Qué hace</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><strong>Volver a mostrar el menú</strong><br><span style="color:var(--ink-faint)">en segundos</span></td>
+              <td>Después de que el bot contesta una <em>Respuesta</em>, espera esta cantidad de segundos y le vuelve a mostrar al contacto el menú donde estaba. Si el contacto escribe antes, se cancela.</td>
+            </tr>
+            <tr>
+              <td><strong>Cerrar por inactividad</strong><br><span style="color:var(--ink-faint)">en minutos</span></td>
+              <td>Si el contacto no escribe durante estos minutos, el bot manda el <em>mensaje de cierre por inactividad</em> y termina la conversación. Si después vuelve a escribir, el bot se reactiva desde el menú principal.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout warn">
+        <span class="ico">Requiere</span>
+        <p>Estos tiempos los procesa una tarea programada (<code>cron</code>) que corre una vez por
+          minuto. Si el equipo técnico todavía no la dejó andando, los ajustes se guardan pero no tienen
+          efecto. La línea que hay que agregar al cron está al pie de este manual.</p>
+      </div>
+    </section>
+
+    <hr class="soft">
+
+    <section id="api">
+      <h2><span class="num">05</span>Conexión con chatealo</h2>
+      <p class="section-note">chatealo es la plataforma que maneja los WhatsApp. Le avisa al bot cada
+        vez que llega un mensaje (webhook), y el bot le contesta llamando a su API. Esta pestaña
+        configura esa conexión.</p>
+
+      <h3>La URL del webhook</h3>
+      <p>Es la dirección que hay que registrar en chatealo para que empiece a avisarnos de los mensajes.
+        Tres botones:</p>
+      <ul>
+        <li><strong>Ver webhooks registrados</strong> — trae la lista actual desde chatealo y marca cuál es el nuestro.</li>
+        <li><strong>Registrar este webhook</strong> — da de alta la URL actual en chatealo (con los eventos que el bot necesita). No la duplica si ya estaba.</li>
+        <li><strong>Regenerar secreto</strong> — cambia la parte secreta de la URL. La URL anterior deja de funcionar al instante; hay que volver a registrarla en chatealo.</li>
+      </ul>
+
+      <h3>Credenciales</h3>
+      <p>Los campos <code>Authorization</code>, <code>X-Chatealo-Admin-Id</code>,
+        <code>X-AppChatealo-User-Token</code>, la <strong>URL base</strong> y el
+        <strong>Account ID</strong> los provee chatealo. Con eso el bot puede mandar respuestas y poner
+        etiquetas. El <strong>Secreto de firma del webhook</strong> se usa para verificar que los eventos
+        entrantes son legítimos; si además tildás <em>Rechazar eventos con firma inválida</em>, un evento
+        que no valida se descarta.</p>
+
+      <h3>Bandejas</h3>
+      <p>El webhook recibe eventos de <strong>todas</strong> las bandejas de la cuenta (WhatsApp, chat
+        web, etc.). Se van listando solas a medida que llegan mensajes. A cada una podés ponerle un
+        <strong>nombre</strong> y un <strong>tipo de fuente</strong> (WhatsApp, Webchat, Telegram,
+        Facebook, Instagram), y decidir si el bot <strong>responde</strong> en esa bandeja.</p>
+    </section>
+
+    <hr class="soft">
+
+    <section id="horarios">
+      <h2><span class="num">06</span>Horarios y días laborales</h2>
+      <p class="section-note">Definen cuándo el bot puede derivar a una persona. Fuera de horario, en
+        vez de derivar, el bot avisa a qué hora vuelve a haber atención y sigue mostrando el menú.</p>
+
+      <h3>Horario semanal</h3>
+      <p>Pintá en la grilla las franjas en las que hay una persona para atender derivaciones.
+        <strong>Si no pintás nada, la derivación funciona siempre</strong>, sin restricción de horario.
+        Un botón <strong>Guardar</strong> reemplaza todo el horario.</p>
+
+      <h3>Días laborables y excepciones</h3>
+      <p>La otra sub-pestaña es un calendario para cargar <strong>feriados, asuetos u horario reducido</strong>
+        para una fecha puntual, que pisan el horario semanal ese día. Los feriados nacionales se
+        sincronizan solos; los que cargás a mano nunca se pisan.</p>
+    </section>
+
+    <hr class="soft">
+
+    <section id="comportamiento">
+      <h2><span class="num">07</span>Cómo responde el bot</h2>
+      <p class="section-note">Referencia rápida de qué hace el bot ante cada mensaje. Todo queda
+        registrado en <strong>Conversaciones</strong>.</p>
+
+      <div class="tbl-scroll">
+        <table>
+          <thead><tr><th>Situación</th><th>Respuesta del bot</th></tr></thead>
+          <tbody>
+            <tr><td>Primer mensaje del contacto</td><td>Manda el <strong>mensaje de bienvenida</strong> + el menú principal. Nunca dice "no entendí".</td></tr>
+            <tr><td>Elige un número válido</td><td>Según el tipo: entra al menú, contesta la respuesta, deriva, vuelve, va al inicio o termina.</td></tr>
+            <tr><td>Escribe algo que no es una opción, <strong>en el menú principal</strong></td><td>Le vuelve a mostrar el menú principal. <strong>No</strong> dice "no entendí".</td></tr>
+            <tr><td>Escribe algo que no es una opción, <strong>dentro de un menú</strong></td><td><strong>"No entendí esa opción"</strong> + ese menú.</td></tr>
+            <tr><td>Elige Derivación</td><td>Manda el mensaje de derivación, etiqueta la conversación en chatealo como <code>equipo-…</code> para transferirla, y deja de responder.</td></tr>
+            <tr><td>La persona resuelve la conversación y el contacto vuelve a escribir</td><td>El bot <strong>se reactiva</strong>: saca la etiqueta de equipo y muestra de nuevo el menú principal.</td></tr>
+            <tr><td>Elige Terminar</td><td>Manda la despedida y marca la conversación como resuelta en chatealo.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout tip">
+        <span class="ico">Etiquetas</span>
+        <p>Las etiquetas <code>menu-…</code> (dónde está parado el contacto) son <strong>sólo para el
+          registro interno</strong>: no se ponen en chatealo. La única etiqueta que el bot pone en
+          chatealo es <code>equipo-…</code>, al derivar, para que la plataforma transfiera la conversación
+          al equipo correcto.</p>
+      </div>
+    </section>
+
+    <hr class="soft">
+
+    <section id="problemas">
+      <h2><span class="num">08</span>Problemas frecuentes</h2>
+
+      <h3>Cambié algo en el panel y no lo veo reflejado</h3>
+      <p>Después de una actualización del sistema, forzá la recarga de la página con
+        <strong>Ctrl + Shift + R</strong>. Si es un cambio de comportamiento del bot (no visual), puede
+        necesitar que el equipo técnico reinicie el servicio.</p>
+
+      <h3>El bot no le responde a un contacto que sé que escribió</h3>
+      <p>Abrí <strong>Conversaciones</strong> y buscá esa conversación. Si figura como
+        <em>derivada</em> y no <em>resuelta</em>, el bot no responde a propósito: está esperando que la
+        persona atienda. Cuando esa persona la marque como resuelta en chatealo, el bot vuelve a tomarla
+        si el contacto escribe de nuevo.</p>
+
+      <h3>Al usuario le llega el número dos veces ("1 - 1 - Beneficios")</h3>
+      <p>La opción quedó nombrada con el número adentro. El bot ya numera solo, así que la opción se
+        tiene que llamar sólo <strong>"Beneficios"</strong>. Igualmente el bot intenta sacar ese prefijo
+        automáticamente.</p>
+
+      <h3>Los tiempos de espera no hacen nada</h3>
+      <p>Falta la tarea programada. Ver el pie de este manual.</p>
+
+      <h3>El webhook no recibe eventos</h3>
+      <p>En la pestaña <strong>API y bandejas</strong>, tocá <em>Ver webhooks registrados</em>. Si la
+        URL nuestra no está en la lista, tocá <em>Registrar este webhook</em>. Revisá que las
+        credenciales de chatealo estén cargadas.</p>
+    </section>
+
+    <footer>
+      <p><strong>Para el equipo técnico.</strong></p>
+      <p>Tarea programada de los tiempos de espera (una vez por minuto):<br>
+        <code>* * * * * python manage.py procesar_temporizadores_chatbot</code></p>
+      <p>Suite de tests:<br>
+        <code>python manage.py test chatbot --settings=config.settings_test</code></p>
+      <p>Las capturas de este manual se generaron con datos de demostración, sin tocar ninguna base real.</p>
+    </footer>
+
+  </main>
+</div>

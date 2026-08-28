@@ -1,0 +1,300 @@
+{% extends base_template|default:"base.html" %}
+{% load static %}
+{% block head %}
+<link rel="stylesheet" href="{% static 'css/styles-chatbot.css' %}?v=20260828">
+{% endblock %}
+{% block content %}
+{% if not embed %}
+<div class="row mb-3 align-items-center">
+  <div class="col">
+    <h4 class="mb-0"><i class="bi bi-calendar3"></i> Días excepcionales — Chatbot</h4>
+  </div>
+  <div class="col-auto d-flex gap-2">
+    <a href="{% url 'chatbot:lista_horarios' %}" class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-clock"></i> Horarios semanales
+    </a>
+    <a href="{% url 'chatbot:panel' %}" class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-arrow-left"></i> Volver al panel
+    </a>
+  </div>
+</div>
+{% endif %}
+
+{% if messages %}
+  {% for msg in messages %}
+    <div class="alert alert-{{ msg.tags }} alert-dismissible fade show">
+      {{ msg }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+  {% endfor %}
+{% endif %}
+
+<p class="text-muted small">
+  Los feriados nacionales se traen automáticamente. Para cargar un feriado o asueto propio, usá el
+  formulario de abajo. Para horario reducido (un rango de horas distinto ese día), usá el editor visual
+  más abajo. Estas excepciones pisan el horario semanal normal para esa fecha puntual.
+</p>
+
+{% if perms.chatbot.gestionar_horarios_chatbot %}
+<div class="card shadow-sm border-0 mb-4" id="agregar-feriado">
+  <div class="card-body">
+    <h6 class="card-title"><i class="bi bi-calendar-plus"></i> Agregar feriado o asueto</h6>
+    <form method="post" action="{% url 'chatbot:agregar_feriado_rapido' %}" class="row g-2 align-items-end">
+      {% csrf_token %}
+      <input type="hidden" name="anio" value="{{ mes_actual.year }}">
+      <input type="hidden" name="mes" value="{{ mes_actual.month }}">
+      <div class="col-md-2">
+        <label class="form-label small">{{ feriado_form.fecha.label }}</label>
+        {{ feriado_form.fecha }}
+      </div>
+      <div class="col-md-2">
+        <label class="form-label small">{{ feriado_form.tipo.label }}</label>
+        {{ feriado_form.tipo }}
+      </div>
+      <div class="col-md-5">
+        <label class="form-label small">{{ feriado_form.descripcion.label }}</label>
+        {{ feriado_form.descripcion }}
+      </div>
+      <div class="col-md-2">
+        <button type="submit" class="btn btn-primary btn-sm w-100"><i class="bi bi-save"></i> Guardar</button>
+      </div>
+      {% if feriado_form.errors %}<div class="text-danger small mt-2">Revisá la fecha.</div>{% endif %}
+    </form>
+  </div>
+</div>
+{% endif %}
+
+<div class="card shadow-sm border-0 mb-4">
+  <div class="card-body">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <a class="btn btn-outline-secondary btn-sm" href="?anio={{ mes_anterior.year }}&mes={{ mes_anterior.month }}">
+        <i class="bi bi-chevron-left"></i>
+      </a>
+      <h6 class="mb-0 text-capitalize">{{ mes_actual|date:'F Y' }}</h6>
+      <a class="btn btn-outline-secondary btn-sm" href="?anio={{ mes_siguiente.year }}&mes={{ mes_siguiente.month }}">
+        <i class="bi bi-chevron-right"></i>
+      </a>
+    </div>
+    <table class="table table-bordered text-center align-middle mb-0" style="table-layout: fixed;">
+      <thead class="table-light">
+        <tr>
+          <th>Lun</th><th>Mar</th><th>Mié</th><th>Jue</th><th>Vie</th><th>Sáb</th><th>Dom</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for semana in semanas %}
+        <tr>
+          {% for dia in semana %}
+          <td class="{% if dia.month != mes_actual.month %}text-muted bg-light{% endif %} {% if dia == hoy %}border-primary border-2{% endif %}"
+              style="height:70px; vertical-align:top;">
+            <a href="?anio={{ mes_actual.year }}&mes={{ mes_actual.month }}&desde={{ dia|date:'Y-m-d' }}&hasta={{ dia|date:'Y-m-d' }}#editor"
+               class="small text-decoration-none">{{ dia.day }}</a>
+            {% for fecha_exc, exc in excepciones.items %}
+              {% if fecha_exc == dia %}
+                <span class="badge {% if exc.tipo == 'HORARIO_REDUCIDO' %}bg-warning text-dark{% else %}bg-danger{% endif %} d-block mt-1"
+                      title="{{ exc.descripcion }}">
+                  {{ exc.get_tipo_display }}
+                </span>
+              {% endif %}
+            {% endfor %}
+          </td>
+          {% endfor %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="card shadow-sm border-0 mb-4" id="editor">
+  <div class="card-body">
+    <h6 class="card-title"><i class="bi bi-pencil-square"></i> Editar un día o una semana</h6>
+    <form method="get" class="row g-2 align-items-end mb-3">
+      <input type="hidden" name="anio" value="{{ mes_actual.year }}">
+      <input type="hidden" name="mes" value="{{ mes_actual.month }}">
+      <div class="col-md-3">
+        <label class="form-label small">Desde</label>
+        <input type="date" name="desde" value="{{ desde }}" class="form-control form-control-sm">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label small">Hasta</label>
+        <input type="date" name="hasta" value="{{ hasta }}" class="form-control form-control-sm">
+      </div>
+      <div class="col-md-2">
+        <button type="submit" class="btn btn-outline-primary btn-sm w-100">Editar rango</button>
+      </div>
+    </form>
+
+    {% if dias_editor %}
+    <div class="table-responsive">
+      <table class="grilla-horarios" id="grilla-especificos">
+        <thead>
+          <tr>
+            <th style="width:60px;"></th>
+            {% for dia in dias_editor %}
+            <th class="columna-dia-header" data-fecha="{{ dia.fecha|date:'Y-m-d' }}">
+              <div>{{ dia.fecha|date:'D d/m' }}</div>
+              <select class="form-select form-select-sm mt-1 selector-tipo-dia">
+                <option value="NORMAL" {% if dia.tipo == 'NORMAL' %}selected{% endif %}>Normal</option>
+                <option value="HORARIO_REDUCIDO" {% if dia.tipo == 'HORARIO_REDUCIDO' %}selected{% endif %}>Hor. reducido</option>
+                <option value="FERIADO" {% if dia.tipo == 'FERIADO' %}selected{% endif %}>Feriado</option>
+                <option value="ASUETO" {% if dia.tipo == 'ASUETO' %}selected{% endif %}>Asueto</option>
+              </select>
+            </th>
+            {% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for slot in slots %}
+          <tr>
+            <td class="grilla-hora">{{ slot }}</td>
+            {% for dia in dias_editor %}
+            <td><div class="celda-horario" data-fecha="{{ dia.fecha|date:'Y-m-d' }}" data-key="{{ slot }}"></div></td>
+            {% endfor %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if perms.chatbot.gestionar_horarios_chatbot %}
+    <button type="button" class="btn btn-primary btn-sm mt-3" id="btn-guardar-especificos">
+      <i class="bi bi-save"></i> Guardar
+    </button>
+    {% endif %}
+    {% else %}
+    <p class="text-muted small mb-0">Elegí una fecha (o hacé clic en un día del calendario) para empezar a editar.</p>
+    {% endif %}
+  </div>
+</div>
+
+<div class="d-flex justify-content-between align-items-center mb-2">
+  <h6 class="mb-0">Próximos días excepcionales</h6>
+  {% if perms.chatbot.gestionar_horarios_chatbot %}
+  <a href="#agregar-feriado" class="btn btn-primary btn-sm">
+    <i class="bi bi-plus-lg"></i> Agregar feriado/asueto
+  </a>
+  {% endif %}
+</div>
+<div class="table-responsive">
+  <table class="table table-hover table-bordered align-middle">
+    <thead class="table-dark">
+      <tr><th>Fecha</th><th>Tipo</th><th>Horario</th><th>Descripción</th><th></th></tr>
+    </thead>
+    <tbody>
+      {% for e in proximas %}
+      <tr>
+        <td>{{ e.fecha|date:'d/m/Y' }}</td>
+        <td>{{ e.get_tipo_display }}</td>
+        <td>{% if e.tipo == 'HORARIO_REDUCIDO' %}{{ e.hora_inicio|time:'H:i' }} - {{ e.hora_fin|time:'H:i' }}{% else %}—{% endif %}</td>
+        <td>{{ e.descripcion|default:'—' }}</td>
+        <td>
+          {% if perms.chatbot.gestionar_horarios_chatbot %}
+          <div class="d-flex gap-1">
+            {% if e.tipo == 'HORARIO_REDUCIDO' %}
+            <a href="?anio={{ mes_actual.year }}&mes={{ mes_actual.month }}&desde={{ e.fecha|date:'Y-m-d' }}&hasta={{ e.fecha|date:'Y-m-d' }}#editor"
+               class="btn btn-outline-primary btn-sm" title="Editar horario reducido">
+              <i class="bi bi-pencil"></i>
+            </a>
+            {% else %}
+            <a href="?anio={{ mes_actual.year }}&mes={{ mes_actual.month }}&editar={{ e.fecha|date:'Y-m-d' }}#agregar-feriado"
+               class="btn btn-outline-primary btn-sm" title="Editar">
+              <i class="bi bi-pencil"></i>
+            </a>
+            {% endif %}
+            <form method="post" action="{% url 'chatbot:eliminar_dia_excepcional' e.pk %}" onsubmit="return confirm('¿Eliminar?');">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-outline-danger btn-sm" title="Eliminar"><i class="bi bi-trash"></i></button>
+            </form>
+          </div>
+          {% endif %}
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="5" class="text-center text-muted py-4">No hay días excepcionales próximos.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% if dias_editor %}{{ dias_editor|json_script:"dias-editor-iniciales" }}{% endif %}
+{% endblock %}
+
+{% block foot %}
+<script src="{% static 'js/chatbot_horarios.js' %}"></script>
+<script>
+(function () {
+  var tabla = document.getElementById('grilla-especificos');
+  if (!tabla) return;
+
+  function actualizarEstadoColumna(fecha) {
+    var select = tabla.querySelector('.columna-dia-header[data-fecha="' + fecha + '"] .selector-tipo-dia');
+    var cerrado = select.value === 'FERIADO' || select.value === 'ASUETO';
+    tabla.querySelectorAll('.celda-horario[data-fecha="' + fecha + '"]').forEach(function (celda) {
+      celda.classList.toggle('cerrada', cerrado);
+      if (cerrado) celda.classList.remove('seleccionada');
+    });
+  }
+
+  // Pre-pintar desde el estado inicial (celdas ya cargadas para HORARIO_REDUCIDO)
+  var dataEl = document.getElementById('dias-editor-iniciales');
+  if (dataEl) {
+    JSON.parse(dataEl.textContent).forEach(function (dia) {
+      (dia.celdas || []).forEach(function (hora) {
+        var celda = tabla.querySelector('.celda-horario[data-fecha="' + dia.fecha + '"][data-key="' + hora + '"]');
+        if (celda) celda.classList.add('seleccionada');
+      });
+    });
+  }
+
+  tabla.querySelectorAll('.columna-dia-header').forEach(function (th) {
+    actualizarEstadoColumna(th.dataset.fecha);
+    th.querySelector('.selector-tipo-dia').addEventListener('change', function () {
+      actualizarEstadoColumna(th.dataset.fecha);
+    });
+  });
+
+  activarPintadoGrilla(tabla);
+
+  // Si se pinta algo en una columna "Normal", pasarla a "Horario reducido" automáticamente.
+  tabla.addEventListener('mousedown', function (e) {
+    var celda = e.target.closest('.celda-horario');
+    if (!celda || celda.classList.contains('cerrada')) return;
+    var select = tabla.querySelector('.columna-dia-header[data-fecha="' + celda.dataset.fecha + '"] .selector-tipo-dia');
+    if (select.value === 'NORMAL') select.value = 'HORARIO_REDUCIDO';
+  });
+
+  var btnGuardar = document.getElementById('btn-guardar-especificos');
+  if (btnGuardar) {
+    btnGuardar.addEventListener('click', function () {
+      var dias = {};
+      tabla.querySelectorAll('.columna-dia-header').forEach(function (th) {
+        var fecha = th.dataset.fecha;
+        var tipo = th.querySelector('.selector-tipo-dia').value;
+        var celdas = Array.prototype.map.call(
+          tabla.querySelectorAll('.celda-horario.seleccionada[data-fecha="' + fecha + '"]'),
+          function (c) { return c.dataset.key; }
+        );
+        dias[fecha] = { tipo: tipo, celdas: celdas };
+      });
+      btnGuardar.disabled = true;
+      fetch("{% url 'chatbot:guardar_dias_especificos' %}", {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfTokenChatbot() },
+        body: JSON.stringify({ dias: dias }),
+      })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          btnGuardar.disabled = false;
+          if (data.ok) {
+            window.location.reload();
+          } else {
+            alert(data.error || 'No se pudo guardar.');
+          }
+        })
+        .catch(function () {
+          btnGuardar.disabled = false;
+          alert('Error de conexión al guardar.');
+        });
+    });
+  }
+})();
+</script>
+{% endblock %}

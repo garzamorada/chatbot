@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row mb-3 align-items-center">
+  <div class="col">
+    <h4 class="mb-0"><i class="bi bi-chat-dots"></i> Conversaciones — Chatbot</h4>
+  </div>
+  <div class="col-auto">
+    <a href="{% url 'chatbot:panel' %}" class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-arrow-left"></i> Volver al panel
+    </a>
+  </div>
+</div>
+
+<div class="table-responsive">
+  <table class="table table-hover table-bordered align-middle">
+    <thead class="table-dark">
+      <tr>
+        <th>Conversación</th>
+        <th>Contacto</th>
+        <th>Menú actual</th>
+        <th>Etiqueta de equipo</th>
+        <th>Estado</th>
+        <th>Última actividad</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for c in conversaciones %}
+      <tr>
+        <td>#{{ c.conversation_id }}</td>
+        <td>{{ c.contacto|default:'—' }}</td>
+        <td>{{ c.menu_actual.texto|default:'Menú principal' }}</td>
+        <td>{{ c.label_equipo_actual|default:'—' }}</td>
+        <td>
+          {% if c.finalizado %}<span class="badge bg-success">Derivada</span>
+          {% else %}<span class="badge bg-secondary">En curso</span>{% endif %}
+        </td>
+        <td>{{ c.actualizado|date:'d/m/Y H:i' }}</td>
+        <td>
+          <a href="{% url 'chatbot:detalle_conversacion' c.pk %}" class="btn btn-outline-primary btn-sm">
+            <i class="bi bi-eye"></i>
+          </a>
+        </td>
+      </tr>
+      {% empty %}
+      <tr>
+        <td colspan="7" class="text-center text-muted py-4">
+          <i class="bi bi-inbox fs-3 d-block mb-1"></i>
+          Todavía no llegó ninguna conversación.
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

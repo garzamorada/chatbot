@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row mb-3 align-items-center">
+  <div class="col">
+    <h4 class="mb-0"><i class="bi bi-chat-dots"></i> Conversación #{{ conversacion.conversation_id }}</h4>
+  </div>
+  <div class="col-auto">
+    <a href="{% url 'chatbot:lista_conversaciones' %}" class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-arrow-left"></i> Volver
+    </a>
+  </div>
+</div>
+
+<div class="card shadow-sm border-0 mb-4">
+  <div class="card-body">
+    <dl class="row mb-0">
+      <dt class="col-sm-3">Contacto</dt><dd class="col-sm-9">{{ conversacion.contacto|default:'—' }}</dd>
+      <dt class="col-sm-3">Menú actual</dt><dd class="col-sm-9">{{ conversacion.menu_actual.texto|default:'Menú principal' }}</dd>
+      <dt class="col-sm-3">Etiqueta de equipo</dt><dd class="col-sm-9">{{ conversacion.label_equipo_actual|default:'—' }}</dd>
+      <dt class="col-sm-3">Estado</dt>
+      <dd class="col-sm-9">
+        {% if conversacion.finalizado %}<span class="badge bg-success">Derivada</span>
+        {% else %}<span class="badge bg-secondary">En curso</span>{% endif %}
+      </dd>
+      <dt class="col-sm-3">Última actividad</dt><dd class="col-sm-9">{{ conversacion.actualizado|date:'d/m/Y H:i:s' }}</dd>
+    </dl>
+  </div>
+</div>
+
+<div class="card shadow-sm border-0">
+  <div class="card-body">
+    <h6 class="card-title">Historial</h6>
+    <div class="table-responsive">
+      <table class="table table-sm table-hover align-middle">
+        <thead>
+          <tr>
+            <th>Fecha</th>
+            <th>Mensaje recibido</th>
+            <th>Acción</th>
+            <th>Opción</th>
+            <th>Detalle</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for log in logs %}
+          <tr>
+            <td>{{ log.fecha|date:'d/m/Y H:i:s' }}</td>
+            <td>{{ log.mensaje_recibido|truncatechars:60 }}</td>
+            <td>{{ log.get_accion_display }}</td>
+            <td>{{ log.opcion.texto|default:'—' }}</td>
+            <td class="text-danger small">{{ log.detalle }}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="5" class="text-center text-muted py-3">Sin actividad todavía.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

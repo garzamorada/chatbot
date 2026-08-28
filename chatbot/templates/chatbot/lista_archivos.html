@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row mb-3 align-items-center">
+  <div class="col">
+    <h4 class="mb-0"><i class="bi bi-folder"></i> Repositorio de archivos — Chatbot</h4>
+  </div>
+  <div class="col-auto">
+    <a href="{% url 'chatbot:panel' %}" class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-arrow-left"></i> Volver al panel
+    </a>
+  </div>
+</div>
+
+{% if messages %}
+  {% for msg in messages %}
+    <div class="alert alert-{{ msg.tags }} alert-dismissible fade show">
+      {{ msg }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+  {% endfor %}
+{% endif %}
+
+{% if perms.chatbot.gestionar_archivos_chatbot %}
+<div class="card shadow-sm border-0 mb-4">
+  <div class="card-body">
+    <h6 class="card-title"><i class="bi bi-upload"></i> Subir archivo</h6>
+    <form method="post" action="{% url 'chatbot:subir_archivo' %}" enctype="multipart/form-data" class="row g-2 align-items-end">
+      {% csrf_token %}
+      <div class="col-md-5">
+        <label class="form-label">{{ form.nombre.label }}</label>
+        {{ form.nombre }}
+      </div>
+      <div class="col-md-5">
+        <label class="form-label">{{ form.archivo.label }}</label>
+        {{ form.archivo }}
+      </div>
+      <div class="col-md-2">
+        <button type="submit" class="btn btn-primary w-100"><i class="bi bi-upload"></i> Subir</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+<div class="table-responsive">
+  <table class="table table-hover table-bordered align-middle">
+    <thead class="table-dark">
+      <tr>
+        <th>Nombre</th>
+        <th>Tipo</th>
+        <th>URL pública</th>
+        <th>Subido por</th>
+        <th>Fecha</th>
+        <th>Acciones</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for archivo in archivos %}
+      <tr>
+        <td>{{ archivo.nombre }}</td>
+        <td><span class="badge bg-secondary">{{ archivo.extension|upper }}</span></td>
+        <td>
+          <div class="input-group input-group-sm" style="max-width: 360px;">
+            <input type="text" class="form-control" readonly
+                   value="{{ request.scheme }}://{{ request.get_host }}{{ archivo.archivo.url }}"
+                   id="url-{{ archivo.pk }}">
+            <button class="btn btn-outline-secondary" type="button" onclick="
+              navigator.clipboard.writeText(document.getElementById('url-{{ archivo.pk }}').value);
+            "><i class="bi bi-clipboard"></i></button>
+          </div>
+        </td>
+        <td>{{ archivo.subido_por|default:'—' }}</td>
+        <td>{{ archivo.fecha_subida|date:'d/m/Y H:i' }}</td>
+        <td>
+          {% if perms.chatbot.gestionar_archivos_chatbot %}
+          <a href="{% url 'chatbot:eliminar_archivo' archivo.pk %}" class="btn btn-outline-danger btn-sm" title="Eliminar">
+            <i class="bi bi-trash"></i>
+          </a>
+          {% endif %}
+        </td>
+      </tr>
+      {% empty %}
+      <tr>
+        <td colspan="6" class="text-center text-muted py-4">
+          <i class="bi bi-inbox fs-3 d-block mb-1"></i>
+          No hay archivos subidos.
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
+
+{% block foot %}
+<script>
+document.querySelectorAll('form input:not([type=checkbox]):not([type=radio]):not([readonly])')
+  .forEach(el => el.classList.add('form-control'));
+</script>
+{% endblock %}

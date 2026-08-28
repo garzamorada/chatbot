@@ -1,0 +1,44 @@
+<div class="modal-header">
+  <h5 class="modal-title">
+    <i class="bi bi-diagram-3"></i>
+    {% if creando %}Nueva opción de menú{% else %}Editar: {{ opcion.texto }}{% endif %}
+  </h5>
+  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+</div>
+<form method="post" action="{% if opcion %}{% url 'chatbot:editar_opcion' opcion.pk %}{% else %}{% url 'chatbot:crear_opcion' %}{% endif %}"
+      class="form-modal-chatbot">
+  {% csrf_token %}
+  <div class="modal-body">
+    {% if form.non_field_errors %}
+      <div class="alert alert-danger py-2 small">{{ form.non_field_errors.0 }}</div>
+    {% endif %}
+    {% for field in form %}
+    <div class="mb-3" data-campo="{{ field.name }}">
+      <label class="form-label fw-semibold" for="{{ field.id_for_label }}">{{ field.label }}</label>
+      {% if field.field.widget.input_type == 'checkbox' %}
+        <div class="form-check">
+          {{ field }}
+          <label class="form-check-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+        </div>
+      {% else %}
+        {{ field }}
+      {% endif %}
+      {% if field.errors %}<div class="text-danger small">{{ field.errors.0 }}</div>{% endif %}
+      {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
+    </div>
+    {% endfor %}
+    <div class="mb-3 d-none" data-campo="nota_terminar">
+      <div class="alert alert-info small mb-0">
+        <i class="bi bi-info-circle"></i>
+        El mensaje de despedida es único para todas las opciones "Terminar" del árbol.
+        <a href="#mensaje-despedida-config" data-bs-dismiss="modal">Editarlo en la configuración general</a>.
+      </div>
+    </div>
+  </div>
+  <div class="modal-footer">
+    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+    <button type="submit" class="btn btn-primary">
+      <i class="bi bi-save"></i> {% if creando %}Crear{% else %}Guardar{% endif %}
+    </button>
+  </div>
+</form>

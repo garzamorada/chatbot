@@ -1,0 +1,7 @@
+# Dependencias de la app chatbot.
+# El código sólo usa Django y `requests` (cliente HTTP contra la API de chatealo
+# y la API de feriados). `mysqlclient` es el driver de la base MySQL del compose.
+
+Django>=5.1,<5.2
+requests>=2.31,<3
+mysqlclient>=2.2,<3

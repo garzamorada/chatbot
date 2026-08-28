@@ -1,0 +1,220 @@
+/* Árbol de menú — drag & drop */
+.menu-lista { display: flex; flex-direction: column; }
+.menu-hijos { margin-left: 2.25rem; border-left: 2px dashed #dee2e6; padding-left: .75rem; }
+
+.menu-card {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  background: #fff;
+  border: 1px solid #dee2e6;
+  border-left: 4px solid #6c757d;
+  border-radius: .5rem;
+  padding: .3rem .6rem;
+  margin: .12rem 0;
+  cursor: grab;
+  transition: box-shadow .15s ease, transform .15s ease;
+}
+.menu-card:hover { box-shadow: 0 2px 6px rgba(0,0,0,.08); }
+.menu-card.tipo-submenu { border-left-color: #0d6efd; }
+.menu-card.tipo-respuesta { border-left-color: #198754; }
+.menu-card.tipo-derivacion { border-left-color: #fd7e14; }
+.menu-card.tipo-volver { border-left-color: #6f42c1; }
+.menu-card.tipo-inicio { border-left-color: #20c997; }
+.menu-card.tipo-terminar { border-left-color: #dc3545; }
+.menu-card-inactiva { opacity: .55; }
+
+/* Paleta de items para agregar (arrastrar al árbol) */
+.paleta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  padding: .3rem .65rem;
+  border-radius: 999px;
+  border: 1px solid #dee2e6;
+  background: #f8f9fa;
+  font-size: .82rem;
+  cursor: grab;
+  user-select: none;
+}
+.paleta-item:hover { box-shadow: 0 1px 4px rgba(0,0,0,.1); }
+.paleta-item.arrastrando { opacity: .4; }
+.paleta-item.tipo-submenu { border-color: #0d6efd; color: #0d6efd; }
+.paleta-item.tipo-respuesta { border-color: #198754; color: #198754; }
+.paleta-item.tipo-derivacion { border-color: #fd7e14; color: #b35900; }
+.paleta-item.tipo-volver { border-color: #6f42c1; color: #6f42c1; }
+.paleta-item.tipo-inicio { border-color: #20c997; color: #0f7a5c; }
+.paleta-item.tipo-terminar { border-color: #dc3545; color: #dc3545; }
+
+#chatbot-papelera, #chatbot-menu-principal {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  padding: .3rem .65rem;
+  border-radius: .5rem;
+  border: 1px dashed #ced4da;
+  color: #adb5bd;
+  font-size: .82rem;
+  opacity: .5;
+  transition: opacity .15s ease, background-color .15s ease, border-color .15s ease, color .15s ease;
+}
+#chatbot-papelera.papelera-activa { opacity: 1; border: 1px dashed #dc3545; color: #dc3545; }
+#chatbot-papelera.papelera-hover { background: #f8d7da; border-style: solid; }
+#chatbot-menu-principal.menu-principal-activo { opacity: 1; border: 1px dashed #0d6efd; color: #0d6efd; }
+#chatbot-menu-principal.menu-principal-hover { background: #cfe2ff; border-style: solid; }
+
+.menu-drag-handle { cursor: grab; color: #adb5bd; }
+.menu-icono-tipo { color: #6c757d; }
+
+.menu-toggle {
+  border: 0;
+  background: none;
+  color: #0d6efd;
+  padding: 0 .1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.menu-toggle .bi { transition: transform .15s ease; display: inline-block; }
+.menu-toggle:not(.collapsed) .bi { transform: rotate(90deg); }
+.menu-toggle-placeholder { display: inline-block; width: 1rem; flex-shrink: 0; }
+.menu-count { flex-shrink: 0; font-weight: 600; }
+.menu-card-texto {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: .4rem;
+}
+.menu-card-texto > strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.menu-slug { flex-shrink: 0; }
+.menu-badge-tipo { flex-shrink: 0; }
+
+.menu-card-arrastrando { opacity: .4; }
+.menu-card-drop-activo { outline: 3px solid #0d6efd; outline-offset: 2px; }
+.menu-no-drop { pointer-events: none; }
+
+.menu-drop-indicator {
+  height: 6px;
+  margin: 2px 0;
+  border-radius: 3px;
+  transition: height .1s ease, background-color .1s ease;
+}
+.menu-drop-indicator-activo { height: 24px; background: #cfe2ff; }
+.menu-drop-indicator-vacio {
+  height: auto;
+  min-height: 44px;
+  border: 2px dashed #dee2e6;
+  color: #adb5bd;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: .85rem;
+}
+.menu-drop-indicator-vacio.menu-drop-indicator-activo { background: #cfe2ff; border-color: #0d6efd; color: #0d6efd; }
+
+/* Grillas de horarios (general y días específicos) */
+.grilla-horarios {
+  border-collapse: collapse;
+  user-select: none;
+  width: 100%;
+}
+.grilla-horarios th, .grilla-horarios td {
+  border: 1px solid #e9ecef;
+  text-align: center;
+  padding: 0;
+}
+.grilla-horarios th { background: #f8f9fa; font-weight: 600; font-size: .8rem; padding: .35rem; }
+.grilla-horarios td.grilla-hora { font-size: .7rem; color: #6c757d; white-space: nowrap; padding: 0 .4rem; background: #fafafa; }
+.celda-horario { height: 20px; cursor: pointer; background: #fff; }
+.celda-horario:hover { background: #e7f1ff; }
+.celda-horario.seleccionada { background: #0d6efd; }
+.celda-horario.seleccionada:hover { background: #0b5ed7; }
+.celda-horario.cerrada { background: #f1f1f1; cursor: not-allowed; }
+
+.columna-dia-header { min-width: 90px; }
+.columna-dia-cerrada th { background: #f8d7da; }
+.columna-dia-header.columna-fin-de-semana { background: #f1f1f1; color: #6c757d; }
+
+/* Páginas de horarios embebidas en una solapa del panel.
+   La altura la ajusta el JS al alto real del contenido (sin scroll interno). */
+.chatbot-embed {
+  width: 100%;
+  height: 480px;   /* provisional hasta que el JS mida el contenido */
+  border: 0;
+  overflow: hidden;
+  background: #fff;
+  border-radius: .375rem;
+}
+
+/* Editor de mensajes con formato WhatsApp */
+.wa-editor-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .25rem;
+  margin-bottom: .35rem;
+}
+.wa-editor-vars-sep {
+  border-left: 1px solid #ced4da;
+  margin: 0 .15rem;
+}
+.wa-editor-var {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: .8rem;
+}
+.wa-editor-emojis {
+  grid-template-columns: repeat(10, 1fr);
+  gap: .15rem;
+  min-width: 260px;
+}
+/* Bootstrap oculta .dropdown-menu con display:none y lo muestra con .show;
+   si esta regla pusiera "display: grid" siempre, empataría en especificidad
+   con la de Bootstrap y (por orden de carga) el menú de emojis quedaría
+   visible permanentemente tapando el resto del formulario. */
+.wa-editor-emojis.show {
+  display: grid;
+}
+.wa-editor-emoji-btn {
+  border: none;
+  background: none;
+  font-size: 1.1rem;
+  line-height: 1.6;
+  border-radius: .25rem;
+  cursor: pointer;
+}
+.wa-editor-emoji-btn:hover { background: #f1f1f1; }
+
+.wa-editor-preview {
+  margin-top: .5rem;
+  background: #e5ddd5;
+  border-radius: .5rem;
+  padding: .6rem;
+  /* ancho de la pantalla vertical de un celular, para ver el mensaje como le llega al contacto */
+  max-width: 380px;
+}
+.wa-editor-preview-header {
+  font-size: .72rem;
+  color: #555;
+  margin-bottom: .35rem;
+  text-transform: uppercase;
+  letter-spacing: .03em;
+}
+.wa-editor-preview-bubble {
+  display: inline-block;
+  max-width: 85%;
+  background: #d9fdd3;
+  border-radius: .5rem;
+  padding: .5rem .65rem;
+  font-size: .9rem;
+  white-space: normal;
+  word-break: break-word;
+  box-shadow: 0 1px 1px rgba(0,0,0,.08);
+}
+.wa-editor-preview-bubble code {
+  background: rgba(0,0,0,.06);
+  border-radius: .2rem;
+  padding: 0 .25rem;
+}
