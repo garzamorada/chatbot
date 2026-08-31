@@ -4,9 +4,21 @@
 <link rel="stylesheet" href="{% static 'css/styles-chatbot.css' %}?v=20260828d">
 {% endblock %}
 {% block content %}
-<div class="row mb-3 align-items-center">
+<div class="row mb-3 align-items-center g-2">
   <div class="col">
     <h4 class="mb-0"><i class="bi bi-robot"></i> Panel de Chatbot</h4>
+  </div>
+  <div class="col-auto">
+    {% if perms.chatbot.gestionar_menu_chatbot %}
+    <div class="form-check form-switch d-inline-flex align-items-center gap-2 me-2 py-1 px-2 rounded border"
+         id="bot-switch-box" title="Interruptor general de las respuestas del bot">
+      <input class="form-check-input mt-0" type="checkbox" role="switch" id="bot-activo-switch"
+             data-url="{% url 'chatbot:toggle_bot' %}" {% if config.activo %}checked{% endif %}>
+      <label class="form-check-label small fw-semibold" for="bot-activo-switch">
+        Bot <span id="bot-estado-txt">{% if config.activo %}activo{% else %}pausado{% endif %}</span>
+      </label>
+    </div>
+    {% endif %}
   </div>
   <div class="col-auto">
     {% if perms.chatbot.gestionar_menu_chatbot %}
@@ -15,6 +27,12 @@
     </button>
     {% endif %}
   </div>
+</div>
+
+<div id="bot-pausado-banner" class="alert alert-warning d-flex align-items-center gap-2 py-2"
+     {% if config.activo %}hidden{% endif %}>
+  <i class="bi bi-pause-circle-fill"></i>
+  <span>El bot está <strong>pausado</strong>: recibe los mensajes pero <strong>no responde ninguno</strong>. Activalo cuando termines de configurar.</span>
 </div>
 
 {% if messages %}
@@ -499,6 +517,40 @@ window.CHATBOT_CREAR_OPCION_URL = "{% url 'chatbot:crear_opcion' %}";
   var cargarActivo = function () { cargar(document.querySelector('#horarios-subtabs .nav-link.active')); };
   if (mainBtn) mainBtn.addEventListener('shown.bs.tab', cargarActivo);
   if (location.hash === '#tab-horarios') cargarActivo();
+})();
+
+// Interruptor general del bot
+(function () {
+  var sw = document.getElementById('bot-activo-switch');
+  if (!sw) return;
+  var banner = document.getElementById('bot-pausado-banner');
+  var box = document.getElementById('bot-switch-box');
+  var txt = document.getElementById('bot-estado-txt');
+  var csrf = (document.querySelector('[name=csrfmiddlewaretoken]') || {}).value || '';
+  function pintar(activo) {
+    if (txt) txt.textContent = activo ? 'activo' : 'pausado';
+    if (banner) banner.hidden = activo;
+    if (box) box.classList.toggle('border-warning', !activo);
+    if (box) box.classList.toggle('bg-warning-subtle', !activo);
+  }
+  pintar(sw.checked);
+  sw.addEventListener('change', function () {
+    var activo = sw.checked;
+    sw.disabled = true;
+    fetch(sw.dataset.url, {
+      method: 'POST',
+      headers: {
+        'X-CSRFToken': csrf,
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'X-Requested-With': 'XMLHttpRequest',
+      },
+      body: 'activo=' + (activo ? '1' : '0'),
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (d) { if (d.ok) pintar(d.activo); else { sw.checked = !activo; } })
+      .catch(function () { sw.checked = !activo; alert('No se pudo cambiar el estado del bot.'); })
+      .finally(function () { sw.disabled = false; });
+  });
 })();
 
 (function () {

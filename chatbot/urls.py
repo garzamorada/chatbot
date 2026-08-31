@@ -8,6 +8,7 @@ urlpatterns = [
     # Panel front (login + permisos)
     path('', views.panel_chatbot, name='panel'),
     path('manual/', views.manual, name='manual'),
+    path('toggle-bot/', views.toggle_bot, name='toggle_bot'),
     path('config/editar/', views.editar_config, name='editar_config'),
     path('config/despedida/', views.editar_despedida, name='editar_despedida'),
     path('config/saludos/', views.editar_saludos, name='editar_saludos'),

@@ -91,7 +91,12 @@ class ConfiguracionChatbot(models.Model):
         verbose_name='Archivo adjunto al despedirse',
     )
 
-    activo = models.BooleanField(default=True)
+    activo = models.BooleanField(
+        default=True, verbose_name='Bot activo',
+        help_text='Interruptor general. Si se apaga, el bot NO responde ningún mensaje '
+                   '(los eventos se siguen recibiendo pero se ignoran). Útil mientras se '
+                   'configura el menú.',
+    )
     creado = models.DateTimeField(auto_now_add=True)
     actualizado = models.DateTimeField(auto_now=True)
     ultimo_uso = models.DateTimeField(null=True, blank=True)
@@ -342,6 +347,7 @@ ACCION_CHOICES = (
     ('REACTIVADA', 'El contacto volvió a escribir tras derivar/terminar: se reactivó el menú'),
     ('BIENVENIDA', 'Primer contacto: saludo de bienvenida + menú'),
     ('INACTIVIDAD', 'Cerrada por inactividad'),
+    ('PAUSADO', 'Llegó un mensaje con el bot pausado desde el panel'),
 )
 
 

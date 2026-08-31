@@ -27,6 +27,9 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         config = ConfiguracionChatbot.obtener()
+        if not config.activo:
+            self.stdout.write('bot pausado desde el panel — no se procesan temporizadores')
+            return
         ahora = timezone.now()
         n_menu = self._remostrar_menus(config, ahora)
         n_cierre = self._cerrar_inactivas(config, ahora)

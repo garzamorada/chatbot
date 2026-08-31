@@ -126,6 +126,31 @@ def _registrar_inbox_seguro(payload):
         logger.exception('Error registrando inbox del webhook')
 
 
+def _registrar_ignorado_por_pausa(payload):
+    """El bot está pausado: sólo deja constancia de que un contacto escribió y no
+    se le respondió. No manda nada ni toca etiquetas en chatealo."""
+    if payload.get('event') != 'message_created' or payload.get('message_type') != 'incoming':
+        return
+    conv_data = payload.get('conversation') or {}
+    conv_id = conv_data.get('id')
+    if not conv_id:
+        return
+    try:
+        sender = payload.get('sender') or {}
+        conversacion, _ = Conversacion.objects.get_or_create(
+            conversation_id=conv_id,
+            defaults={
+                'contacto': sender.get('phone_number') or sender.get('identifier') or '',
+                'inbox_id': payload.get('inbox_id') or conv_data.get('inbox_id'),
+                'nombre_contacto': sender.get('name') or '',
+            },
+        )
+        _log(conversacion, payload.get('content') or '', None, 'PAUSADO',
+             'el bot estaba pausado desde el panel')
+    except Exception:
+        logger.exception('Error registrando mensaje recibido con el bot pausado')
+
+
 def _procesar_evento_conversacion(payload, evento):
     """conversation_created / conversation_status_changed: en estos eventos el
     payload ES la conversación (no viene anidada). Se registra/actualiza la
@@ -315,6 +340,11 @@ def webhook_chatealo(request, secret):
     # Se registran TODAS las bandejas que le pegan al webhook (cualquier evento),
     # para poder asociarles nombre/tipo de fuente desde el panel.
     _registrar_inbox_seguro(payload)
+
+    # Interruptor general: si el bot está pausado desde el panel, no responde nada.
+    if not config.activo:
+        _registrar_ignorado_por_pausa(payload)
+        return HttpResponse(status=200)
 
     evento = payload.get('event')
     if evento in ('conversation_created', 'conversation_status_changed'):

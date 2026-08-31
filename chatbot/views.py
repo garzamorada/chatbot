@@ -93,6 +93,21 @@ def panel_chatbot(request):
 
 
 @login_required
+@require_POST
+def toggle_bot(request):
+    """Interruptor general: activa o pausa todas las respuestas del bot."""
+    _check(request, 'gestionar_menu_chatbot')
+    config = ConfiguracionChatbot.obtener()
+    config.activo = request.POST.get('activo') == '1'
+    config.save(update_fields=['activo', 'actualizado'])
+    UserLog.objects.create(
+        usuario=request.user,
+        accion=f'{"Activó" if config.activo else "Pausó"} el chatbot',
+    )
+    return JsonResponse({'ok': True, 'activo': config.activo})
+
+
+@login_required
 def editar_config(request):
     _check(request, 'gestionar_token_chatbot')
     config = ConfiguracionChatbot.obtener()

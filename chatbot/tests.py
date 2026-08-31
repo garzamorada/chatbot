@@ -13,6 +13,7 @@ from django.core.management import call_command
 from django.test import Client, RequestFactory, TestCase
 from django.utils import timezone
 
+
 from chatbot import api_views, defaults, firma
 from chatbot.forms import SaludosChatbotForm, TiemposChatbotForm
 from chatbot.horarios import expandir_rango_a_horas, merge_horas_a_rangos
@@ -456,6 +457,24 @@ class WebhookIntegrationTests(TestCase):
         )
         self.assertEqual(r.status_code, 401)
 
+    def test_bot_pausado_no_responde(self, cli):
+        self.config.activo = False
+        self.config.save()
+        self._webhook('hola', 1)
+        cli.enviar_mensaje.assert_not_called()
+        cli.actualizar_labels.assert_not_called()
+        self.assertEqual(self._ult_log().accion, 'PAUSADO')
+
+    def test_bot_reactivado_vuelve_a_responder(self, cli):
+        self.config.activo = False
+        self.config.save()
+        self._webhook('hola', 1)
+        self.config.activo = True
+        self.config.save()
+        cli.reset_mock()
+        self._webhook('hola', 2)
+        cli.enviar_mensaje.assert_called_once()
+
     def test_fuera_de_horario_no_deriva(self, cli):
         self._webhook('hola', 1)
         with mock.patch('chatbot.api_views.esta_en_horario', return_value=False), \
@@ -499,6 +518,18 @@ class TemporizadoresCommandTests(TestCase):
         self.assertTrue(c.chatealo_resuelta)
         cli.cambiar_estado_conversacion.assert_called_with(mock.ANY, 6002, 'resolved')
         self.assertTrue(ConversacionLog.objects.filter(conversacion=c, accion='INACTIVIDAD').exists())
+
+    def test_comando_no_corre_si_bot_pausado(self, cli):
+        self.config.activo = False
+        self.config.save()
+        c = Conversacion.objects.create(
+            conversation_id=6009,
+            ultima_actividad=timezone.now() - dt.timedelta(days=1),
+        )
+        call_command('procesar_temporizadores_chatbot')
+        c.refresh_from_db()
+        self.assertFalse(c.finalizado)
+        cli.enviar_mensaje.assert_not_called()
 
     def test_no_cierra_si_config_en_cero(self, cli):
         self.config.minutos_inactividad_cierre = 0
@@ -564,6 +595,14 @@ class PanelViewsTests(TestCase):
         data = r.json()
         self.assertTrue(data['ok'])
         self.assertEqual(len(data['webhooks']), 1)
+
+    def test_toggle_bot(self):
+        r = self.client.post('/chatbot/toggle-bot/', {'activo': '0'})
+        self.assertEqual(r.status_code, 200)
+        self.assertFalse(r.json()['activo'])
+        self.assertFalse(ConfiguracionChatbot.obtener().activo)
+        r = self.client.post('/chatbot/toggle-bot/', {'activo': '1'})
+        self.assertTrue(ConfiguracionChatbot.obtener().activo)
 
     def test_manual_html(self):
         r = self.client.get('/chatbot/manual/')
