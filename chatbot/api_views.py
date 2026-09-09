@@ -252,11 +252,19 @@ def _enviar_seguro(config, conversation_id, texto):
         return f'Error enviando mensaje: {exc}'
 
 
+# Botón de acción de WhatsApp en las respuestas: código listo pero DESACTIVADO.
+# chatealo devuelve 422 en TODO mensaje saliente ("undefined method 'members'
+# for nil"), así que no tiene sentido habilitarlo hasta resolver eso. Para
+# reactivar: poner True acá y devolver 'boton_texto'/'boton_url' a
+# CAMPOS_POR_TIPO.RESPUESTA en chatbot_menu.js.
+BOTON_RESPUESTA_HABILITADO = False
+
+
 def _enviar_respuesta_seguro(config, conversation_id, texto, opcion):
     """Envía el texto de una RESPUESTA. Si la opción tiene botón (texto + link)
     lo manda como acción; si eso falla, reintenta como texto plano con el link
     al pie para que siempre quede accesible."""
-    if not opcion.tiene_boton:
+    if not BOTON_RESPUESTA_HABILITADO or not opcion.tiene_boton:
         return _enviar_seguro(config, conversation_id, texto)
     boton = {'texto': opcion.boton_texto.strip(), 'url': opcion.boton_url.strip()}
     try:

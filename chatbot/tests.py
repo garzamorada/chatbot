@@ -389,6 +389,17 @@ class WebhookIntegrationTests(TestCase):
         _, kwargs = cli.enviar_mensaje.call_args
         self.assertNotIn('boton', kwargs)
 
+    def test_boton_desactivado_manda_texto_plano_aunque_este_configurado(self, cli):
+        # BOTON_RESPUESTA_HABILITADO es False por defecto
+        self.kits.boton_texto, self.kits.boton_url = 'Ver sede', 'https://ejemplo.org'
+        self.kits.save()
+        self._webhook('1', 1)
+        cli.reset_mock()
+        self._webhook('1', 2)
+        _, kwargs = cli.enviar_mensaje.call_args
+        self.assertNotIn('boton', kwargs)
+
+    @mock.patch('chatbot.api_views.BOTON_RESPUESTA_HABILITADO', True)
     def test_respuesta_con_boton_manda_accion(self, cli):
         self.kits.boton_texto = 'Ver sede'
         self.kits.boton_url = 'https://ejemplo.org/sedes'
@@ -399,6 +410,7 @@ class WebhookIntegrationTests(TestCase):
         _, kwargs = cli.enviar_mensaje.call_args
         self.assertEqual(kwargs['boton'], {'texto': 'Ver sede', 'url': 'https://ejemplo.org/sedes'})
 
+    @mock.patch('chatbot.api_views.BOTON_RESPUESTA_HABILITADO', True)
     def test_respuesta_boton_falla_cae_a_texto_con_link(self, cli):
         self.kits.boton_texto = 'Ver sede'
         self.kits.boton_url = 'https://ejemplo.org/sedes'
