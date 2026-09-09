@@ -252,6 +252,24 @@ def _enviar_seguro(config, conversation_id, texto):
         return f'Error enviando mensaje: {exc}'
 
 
+def _enviar_respuesta_seguro(config, conversation_id, texto, opcion):
+    """Envía el texto de una RESPUESTA. Si la opción tiene botón (texto + link)
+    lo manda como acción; si eso falla, reintenta como texto plano con el link
+    al pie para que siempre quede accesible."""
+    if not opcion.tiene_boton:
+        return _enviar_seguro(config, conversation_id, texto)
+    boton = {'texto': opcion.boton_texto.strip(), 'url': opcion.boton_url.strip()}
+    try:
+        chatealo_client.enviar_mensaje(config, conversation_id, texto, boton=boton)
+        return ''
+    except Exception as exc:
+        logger.warning('Botón de acción falló en conversación %s (%s); reintento como texto',
+                       conversation_id, exc)
+        return _enviar_seguro(
+            config, conversation_id, f'{texto}\n\n👉 {boton["texto"]}: {boton["url"]}',
+        )
+
+
 def _resolver_conversacion_segura(config, conversation_id):
     try:
         chatealo_client.cambiar_estado_conversacion(config, conversation_id, 'resolved')
@@ -478,7 +496,7 @@ def webhook_chatealo(request, secret):
         url_archivo = _url_archivo(request, opcion)
         if url_archivo:
             respuesta = f'{respuesta}\n{url_archivo}'
-        err_msg = _enviar_seguro(config, conversation_id, respuesta)
+        err_msg = _enviar_respuesta_seguro(config, conversation_id, respuesta, opcion)
 
         # agenda volver a mostrar el menú donde estaba, pasados N segundos.
         if config.segundos_remostrar_menu:

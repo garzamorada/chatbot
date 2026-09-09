@@ -276,7 +276,7 @@
     // Submenú/Volver/Inicio son navegación pura: no llevan texto propio.
     // 'orden' no está en el form: se define arrastrando en el árbol.
     SUBMENU: ['texto', 'slug', 'parent', 'archivo', 'activo'],
-    RESPUESTA: ['texto', 'slug', 'parent', 'respuesta_texto', 'archivo', 'activo'],
+    RESPUESTA: ['texto', 'slug', 'parent', 'respuesta_texto', 'boton_texto', 'boton_url', 'archivo', 'activo'],
     DERIVACION: ['texto', 'slug', 'parent', 'mensaje_derivacion', 'archivo', 'activo'],
     VOLVER: ['texto', 'slug', 'parent', 'activo'],
     INICIO: ['texto', 'slug', 'parent', 'activo'],

@@ -21,10 +21,32 @@ def _base(config):
     return f'{config.chatealo_base_url.rstrip("/")}/api/v1/accounts/{config.chatealo_account_id}'
 
 
-def enviar_mensaje(config, conversation_id, texto):
-    """POST .../conversations/{id}/messages — manda un mensaje de texto saliente."""
+def enviar_mensaje(config, conversation_id, texto, boton=None):
+    """POST .../conversations/{id}/messages — mensaje saliente.
+
+    Si `boton` es un dict con 'texto' y 'url', se manda como `content_type: cards`
+    con una acción de tipo link (botón de acción). El canal (WhatsApp/webchat/…)
+    decide cómo renderizarlo; si no lo soporta, el `content` de texto igual llega.
+    """
     url = f'{_base(config)}/conversations/{conversation_id}/messages'
-    body = {'content': texto, 'message_type': 'outgoing', 'content_type': 'text'}
+    if boton and boton.get('texto') and boton.get('url'):
+        body = {
+            'message_type': 'outgoing',
+            'content': texto,
+            'content_type': 'cards',
+            'content_attributes': {
+                'items': [{
+                    'title': (texto or ' ')[:1024],
+                    'actions': [{
+                        'type': 'link',
+                        'text': str(boton['texto'])[:20],
+                        'uri': boton['url'],
+                    }],
+                }],
+            },
+        }
+    else:
+        body = {'content': texto, 'message_type': 'outgoing', 'content_type': 'text'}
     r = requests.post(url, json=body, headers=_headers(config), timeout=TIMEOUT)
     r.raise_for_status()
     return r.json()

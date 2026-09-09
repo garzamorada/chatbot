@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% load static %}
 {% block head %}
-<link rel="stylesheet" href="{% static 'css/styles-chatbot.css' %}?v=20260828d">
+<link rel="stylesheet" href="{% static 'css/styles-chatbot.css' %}?v=20260909">
 {% endblock %}
 {% block content %}
 <div class="row mb-3 align-items-center g-2">
@@ -606,8 +606,8 @@ window.CHATBOT_CREAR_OPCION_URL = "{% url 'chatbot:crear_opcion' %}";
   }
 })();
 </script>
-<script src="{% static 'js/chatbot_wa_editor.js' %}?v=20260828d"></script>
-<script src="{% static 'js/chatbot_menu.js' %}?v=20260828d"></script>
+<script src="{% static 'js/chatbot_wa_editor.js' %}?v=20260909"></script>
+<script src="{% static 'js/chatbot_menu.js' %}?v=20260909"></script>
 <script>
 if (window.iniciarEditoresWhatsApp) window.iniciarEditoresWhatsApp(document);
 </script>

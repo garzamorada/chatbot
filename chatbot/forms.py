@@ -40,12 +40,14 @@ class MenuOpcionForm(forms.ModelForm):
         fields = [
             'texto', 'slug', 'parent', 'tipo',
             'respuesta_texto',
+            'boton_texto', 'boton_url',
             'mensaje_derivacion',
             'archivo', 'activo',
         ]
         widgets = {
             'respuesta_texto': forms.Textarea(attrs={'rows': 4}),
             'mensaje_derivacion': forms.Textarea(attrs={'rows': 3}),
+            'boton_url': forms.URLInput(attrs={'placeholder': 'https://...'}),
         }
 
     def __init__(self, *args, **kwargs):

@@ -70,6 +70,14 @@ class LimpiarTextoOpcionTests(TestCase):
         self.assertEqual(api_views._nombre_area(op), 'Obra Social')
 
 
+class BotonRespuestaTests(TestCase):
+    def test_tiene_boton_requiere_texto_y_url(self):
+        self.assertFalse(MenuOpcion(boton_texto='', boton_url='').tiene_boton)
+        self.assertFalse(MenuOpcion(boton_texto='Ver', boton_url='').tiene_boton)
+        self.assertFalse(MenuOpcion(boton_texto='', boton_url='https://x.org').tiene_boton)
+        self.assertTrue(MenuOpcion(boton_texto='Ver', boton_url='https://x.org').tiene_boton)
+
+
 class TextoMenuTests(TestCase):
     def test_numera_1_indexado_con_formato_n_guion(self):
         opciones = [MenuOpcion(texto='1 - Uno'), MenuOpcion(texto='Dos'), MenuOpcion(texto='Tres')]
@@ -373,6 +381,37 @@ class WebhookIntegrationTests(TestCase):
         conv = self._conv()
         self.assertEqual(self._ult_log().accion, 'RESPUESTA')
         self.assertIsNotNone(conv.remostrar_menu_en)
+
+    def test_respuesta_sin_boton_manda_texto_plano(self, cli):
+        self._webhook('1', 1)
+        cli.reset_mock()
+        self._webhook('1', 2)   # Kits (sin botón)
+        _, kwargs = cli.enviar_mensaje.call_args
+        self.assertNotIn('boton', kwargs)
+
+    def test_respuesta_con_boton_manda_accion(self, cli):
+        self.kits.boton_texto = 'Ver sede'
+        self.kits.boton_url = 'https://ejemplo.org/sedes'
+        self.kits.save()
+        self._webhook('1', 1)
+        cli.reset_mock()
+        self._webhook('1', 2)
+        _, kwargs = cli.enviar_mensaje.call_args
+        self.assertEqual(kwargs['boton'], {'texto': 'Ver sede', 'url': 'https://ejemplo.org/sedes'})
+
+    def test_respuesta_boton_falla_cae_a_texto_con_link(self, cli):
+        self.kits.boton_texto = 'Ver sede'
+        self.kits.boton_url = 'https://ejemplo.org/sedes'
+        self.kits.save()
+        self._webhook('1', 1)
+        cli.reset_mock()
+        # 1er intento (con botón) explota, 2do (texto plano) OK
+        cli.enviar_mensaje.side_effect = [RuntimeError('no soportado'), {'id': 1}]
+        self._webhook('1', 2)
+        self.assertEqual(cli.enviar_mensaje.call_count, 2)
+        texto_fallback = cli.enviar_mensaje.call_args[0][2]
+        self.assertIn('https://ejemplo.org/sedes', texto_fallback)
+        self.assertEqual(self._ult_log().accion, 'RESPUESTA')
 
     def test_derivacion_aplica_equipo_y_finaliza(self, cli):
         self._webhook('hola', 1)

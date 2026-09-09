@@ -179,6 +179,18 @@ class MenuOpcion(models.Model):
         help_text='Se incluye su URL pública en la respuesta que recibe el bot.',
     )
 
+    # tipo = RESPUESTA — botón de acción opcional al pie del mensaje.
+    # Solo se manda si BOTÓN + LINK están los dos cargados; si falta alguno, se ignora.
+    boton_texto = models.CharField(
+        max_length=20, blank=True, verbose_name='Texto del botón',
+        help_text='Solo Respuesta. Botón de acción al pie del mensaje. Máx. 20 caracteres '
+                   '(límite de WhatsApp). Necesita también el link cargado.',
+    )
+    boton_url = models.URLField(
+        blank=True, verbose_name='Link del botón',
+        help_text='A dónde lleva el botón (debe empezar con https://). Necesita también el texto.',
+    )
+
     activo = models.BooleanField(default=True)
 
     creado_por = models.ForeignKey(
@@ -201,6 +213,10 @@ class MenuOpcion(models.Model):
     @property
     def label_menu(self):
         return f'menu-{self.slug}'
+
+    @property
+    def tiene_boton(self):
+        return bool((self.boton_texto or '').strip() and (self.boton_url or '').strip())
 
     def __str__(self):
         return self.texto

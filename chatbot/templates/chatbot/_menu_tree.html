@@ -21,6 +21,7 @@
         <code class="text-muted small menu-slug">({{ op.slug }})</code>
         {% if not op.activo %}<span class="badge bg-warning text-dark ms-1">Inactiva</span>{% endif %}
         {% if op.archivo %}<i class="bi bi-paperclip text-muted ms-1" title="{{ op.archivo.nombre }}"></i>{% endif %}
+        {% if op.tiene_boton %}<i class="bi bi-box-arrow-up-right text-muted ms-1" title="Botón: {{ op.boton_texto }}"></i>{% endif %}
       </div>
       {% if op.tipo == 'SUBMENU' %}<span class="badge bg-light text-secondary menu-count d-none" title="opciones adentro">0</span>{% endif %}
       <span class="badge bg-secondary menu-badge-tipo">{{ op.get_tipo_display }}</span>
