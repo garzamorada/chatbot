@@ -41,12 +41,13 @@ class MenuOpcionForm(forms.ModelForm):
             'texto', 'slug', 'parent', 'tipo',
             'respuesta_texto',
             'boton_texto', 'boton_url',
-            'mensaje_derivacion',
+            'derivacion_ofrecer', 'derivacion_texto', 'mensaje_derivacion',
             'archivo', 'activo',
         ]
         widgets = {
             'respuesta_texto': forms.Textarea(attrs={'rows': 4}),
             'mensaje_derivacion': forms.Textarea(attrs={'rows': 3}),
+            'derivacion_texto': forms.TextInput(attrs={'placeholder': 'Hablar con un operador'}),
             'boton_url': forms.URLInput(attrs={'placeholder': 'https://...'}),
         }
 
@@ -110,6 +111,22 @@ class SaludosChatbotForm(DefaultsMixin, forms.ModelForm):
             'mensaje_bienvenida': forms.Textarea(attrs={'rows': 2}),
             'plantilla_saludo_inicial': forms.Textarea(attrs={'rows': 2}),
             'plantilla_saludo_area': forms.Textarea(attrs={'rows': 2}),
+        }
+
+
+class DerivacionChatbotForm(DefaultsMixin, forms.ModelForm):
+    """Config GENERAL de la opción "Hablar con un operador" (el menú principal
+    usa estos valores; cada submenú puede pisarlos en su propia edición)."""
+    DEFAULTS = {
+        'derivacion_texto': defaults.DERIVACION_TEXTO,
+        'derivacion_mensaje': defaults.DERIVACION_MENSAJE,
+    }
+
+    class Meta:
+        model = ConfiguracionChatbot
+        fields = ['derivacion_ofrecer', 'derivacion_texto', 'derivacion_mensaje']
+        widgets = {
+            'derivacion_mensaje': forms.Textarea(attrs={'rows': 3}),
         }
 
 

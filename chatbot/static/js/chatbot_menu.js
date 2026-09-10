@@ -274,15 +274,15 @@
 
   var CAMPOS_POR_TIPO = {
     // 'orden' no está en el form: se define arrastrando en el árbol.
-    // Volver al menú principal / hablar con un operador / terminar ya NO se
-    // cargan: el bot los agrega solo al pie de cada menú (ver _opciones_nav en
-    // api_views.py).
-    SUBMENU: ['texto', 'slug', 'parent', 'archivo', 'activo'],
+    // Volver al menú principal / terminar los agrega el bot solo al pie de cada
+    // menú. "Hablar con un operador" también, pero es configurable por menú:
+    // derivacion_ofrecer / derivacion_texto / mensaje_derivacion (sólo Menú).
+    SUBMENU: ['texto', 'slug', 'parent', 'derivacion_ofrecer', 'derivacion_texto',
+              'mensaje_derivacion', 'archivo', 'activo'],
     // 'boton_texto'/'boton_url' quedan ocultos por ahora: el envío de botones a
     // WhatsApp está desactivado (BOTON_RESPUESTA_HABILITADO en api_views.py) hasta
     // resolver el envío saliente con chatealo.
     RESPUESTA: ['texto', 'slug', 'parent', 'respuesta_texto', 'archivo', 'activo'],
-    DERIVACION: ['texto', 'slug', 'parent', 'mensaje_derivacion', 'archivo', 'activo'],
   };
 
   function actualizarCamposSegunTipo() {

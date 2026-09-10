@@ -47,7 +47,7 @@ class Command(BaseCommand):
         en_horario = esta_en_horario()
         n = 0
         for c in pendientes:
-            opciones = _opciones_visibles(c.menu_actual, en_horario)
+            opciones = _opciones_visibles(config, c.menu_actual, en_horario)
             texto, items = _render_menu(config, c.menu_actual, opciones, c.nombre_contacto)
             detalle = 'menú re-mostrado por temporizador'
             try:

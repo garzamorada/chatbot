@@ -12,6 +12,7 @@ urlpatterns = [
     path('config/editar/', views.editar_config, name='editar_config'),
     path('config/despedida/', views.editar_despedida, name='editar_despedida'),
     path('config/saludos/', views.editar_saludos, name='editar_saludos'),
+    path('config/derivacion/', views.editar_derivacion, name='editar_derivacion'),
     path('config/tiempos/', views.editar_tiempos, name='editar_tiempos'),
     path('webhook-secret/regenerar/', views.regenerar_webhook_secret, name='regenerar_webhook_secret'),
     path('webhooks/listar/', views.webhooks_listar, name='webhooks_listar'),

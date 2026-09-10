@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% load static %}
 {% block head %}
-<link rel="stylesheet" href="{% static 'css/styles-chatbot.css' %}?v=20260910">
+<link rel="stylesheet" href="{% static 'css/styles-chatbot.css' %}?v=20260910b">
 {% endblock %}
 {% block content %}
 <div class="row mb-3 align-items-center g-2">
@@ -77,10 +77,10 @@
           <span class="text-muted small me-1"><i class="bi bi-hand-index-thumb"></i> Arrastrá para agregar:</span>
           <div class="paleta-item tipo-submenu" draggable="true" data-tipo="SUBMENU"><i class="bi bi-folder2"></i> Menú</div>
           <div class="paleta-item tipo-respuesta" draggable="true" data-tipo="RESPUESTA"><i class="bi bi-chat-left-text"></i> Respuesta</div>
-          <div class="paleta-item tipo-derivacion" draggable="true" data-tipo="DERIVACION"><i class="bi bi-person-lines-fill"></i> Derivación</div>
           <span class="text-muted small ms-2 d-none d-lg-inline">
             <i class="bi bi-info-circle"></i>
-            El bot agrega solo al pie de cada menú: volver al menú principal, hablar con un operador (día hábil) y terminar.
+            El bot agrega solo al pie de cada menú: volver al menú principal, hablar con un operador
+            (día hábil, configurable por menú) y terminar.
           </span>
           <div id="chatbot-menu-principal" class="ms-auto">
             <i class="bi bi-house-door"></i> <span class="d-none d-sm-inline">Soltá acá para mandar al menú principal</span>
@@ -134,7 +134,7 @@
               {% endfor %}
             </ul>
             {% else %}
-            <p class="text-muted small mb-0">No hay opciones de tipo Derivación en el menú.</p>
+            <p class="text-muted small mb-0">Ningún menú ofrece "Hablar con un operador" (revisá la config en Mensajes).</p>
             {% endif %}
           </div>
         </div>
@@ -217,6 +217,45 @@
             </label>
             {{ tiempos_form.mensaje_cierre_inactividad }}
             <div class="form-text">{{ tiempos_form.mensaje_cierre_inactividad.help_text }}</div>
+          </div>
+          {% if perms.chatbot.gestionar_menu_chatbot %}
+          <button type="submit" class="btn btn-outline-primary btn-sm mt-2"><i class="bi bi-save"></i> Guardar</button>
+          {% endif %}
+        </form>
+      </div>
+    </div>
+
+    <div class="card shadow-sm border-0 mb-4" id="derivacion-config">
+      <div class="card-body">
+        <h6 class="card-title"><i class="bi bi-person-lines-fill"></i> Hablar con un operador</h6>
+        <p class="text-muted small mb-3">
+          El bot agrega esta opción al pie de cada menú, <strong>sólo dentro del horario de atención</strong>.
+          Estos son los valores generales; <strong>cada menú puede tener su propio texto y mensaje</strong>
+          (o desactivarla) desde su edición en la pestaña Menú.
+          Al derivar se aplica la etiqueta <code>equipo-&lt;menú&gt;</code> en chatealo.
+        </p>
+        <form method="post" action="{% url 'chatbot:editar_derivacion' %}">
+          {% csrf_token %}
+          <div class="form-check form-switch mb-3">
+            {{ derivacion_form.derivacion_ofrecer }}
+            <label class="form-check-label small fw-semibold" for="{{ derivacion_form.derivacion_ofrecer.id_for_label }}">
+              {{ derivacion_form.derivacion_ofrecer.label }}
+            </label>
+            <div class="form-text">{{ derivacion_form.derivacion_ofrecer.help_text }}</div>
+          </div>
+          <div class="mb-3" style="max-width: 320px;">
+            <label class="form-label fw-semibold small" for="{{ derivacion_form.derivacion_texto.id_for_label }}">
+              {{ derivacion_form.derivacion_texto.label }}
+            </label>
+            {{ derivacion_form.derivacion_texto }}
+            <div class="form-text">{{ derivacion_form.derivacion_texto.help_text }}</div>
+          </div>
+          <div class="mb-3" data-campo="derivacion_mensaje" data-variables="area,nombre">
+            <label class="form-label fw-semibold small" for="{{ derivacion_form.derivacion_mensaje.id_for_label }}">
+              {{ derivacion_form.derivacion_mensaje.label }}
+            </label>
+            {{ derivacion_form.derivacion_mensaje }}
+            <div class="form-text">{{ derivacion_form.derivacion_mensaje.help_text }}</div>
           </div>
           {% if perms.chatbot.gestionar_menu_chatbot %}
           <button type="submit" class="btn btn-outline-primary btn-sm mt-2"><i class="bi bi-save"></i> Guardar</button>
@@ -607,8 +646,8 @@ window.CHATBOT_CREAR_OPCION_URL = "{% url 'chatbot:crear_opcion' %}";
   }
 })();
 </script>
-<script src="{% static 'js/chatbot_wa_editor.js' %}?v=20260910"></script>
-<script src="{% static 'js/chatbot_menu.js' %}?v=20260910"></script>
+<script src="{% static 'js/chatbot_wa_editor.js' %}?v=20260910b"></script>
+<script src="{% static 'js/chatbot_menu.js' %}?v=20260910b"></script>
 <script>
 if (window.iniciarEditoresWhatsApp) window.iniciarEditoresWhatsApp(document);
 </script>

@@ -97,7 +97,6 @@ def _menu_con_encabezado(config, opcion_menu, opciones, nombre=''):
 #  "Terminar la conversación" (siempre).                                       #
 # --------------------------------------------------------------------------- #
 NAV_INICIO_TEXTO = 'Volver al menú principal'
-NAV_OPERADOR_TEXTO = 'Hablar con un operador'
 NAV_TERMINAR_TEXTO = 'Terminar la conversación'
 
 
@@ -106,33 +105,47 @@ class _OpcionNav:
     Imita la interfaz mínima de `MenuOpcion` que usa el webhook."""
     pk = None
     archivo_id = None
-    mensaje_derivacion = ''
     respuesta_texto = ''
     slug = ''
     activo = True
     tiene_boton = False
 
-    def __init__(self, tipo, texto):
+    def __init__(self, tipo, texto, mensaje_derivacion=''):
         self.tipo = tipo
         self.texto = texto
+        self.mensaje_derivacion = mensaje_derivacion
 
     def __str__(self):
         return self.texto
 
 
-def _opciones_nav(opcion_menu, en_horario):
+def _derivacion_config(config, opcion_menu):
+    """(ofrecer, texto, mensaje) de la opción "Hablar con un operador" para este
+    menú. Cada menú puede pisar los valores generales de ConfiguracionChatbot;
+    el menú principal (opcion_menu=None) usa directo los generales."""
+    grl_texto = (config.derivacion_texto or '').strip() or defaults.DERIVACION_TEXTO
+    grl_mensaje = (config.derivacion_mensaje or '').strip() or defaults.DERIVACION_MENSAJE
+    if opcion_menu is None:
+        return config.derivacion_ofrecer, grl_texto, grl_mensaje
+    texto = (opcion_menu.derivacion_texto or '').strip() or grl_texto
+    mensaje = (opcion_menu.mensaje_derivacion or '').strip() or grl_mensaje
+    return opcion_menu.derivacion_ofrecer, texto[:24], mensaje
+
+
+def _opciones_nav(config, opcion_menu, en_horario):
     navs = []
     if opcion_menu is not None:
         navs.append(_OpcionNav('INICIO', NAV_INICIO_TEXTO))
-    if en_horario:
-        navs.append(_OpcionNav('DERIVACION', NAV_OPERADOR_TEXTO))
+    ofrecer, texto_op, mensaje_op = _derivacion_config(config, opcion_menu)
+    if en_horario and ofrecer:
+        navs.append(_OpcionNav('DERIVACION', texto_op, mensaje_derivacion=mensaje_op))
     navs.append(_OpcionNav('TERMINAR', NAV_TERMINAR_TEXTO))
     return navs
 
 
-def _opciones_visibles(opcion_menu, en_horario):
+def _opciones_visibles(config, opcion_menu, en_horario):
     """Opciones reales del menú (de la BD) + las de navegación fijas."""
-    return _opciones_de(opcion_menu) + _opciones_nav(opcion_menu, en_horario)
+    return _opciones_de(opcion_menu) + _opciones_nav(config, opcion_menu, en_horario)
 
 
 def _es_opcion_db(opcion):
@@ -382,7 +395,7 @@ def _reactivar_conversacion(config, conversation_id, conversacion, labels_actual
     conversacion.label_equipo_actual = ''
     conversacion.menu_mostrado = True
 
-    opciones = _opciones_visibles(None, esta_en_horario())
+    opciones = _opciones_visibles(config, None, esta_en_horario())
     err_msg = _enviar_menu(config, conversation_id, None, opciones, conversacion.nombre_contacto)
     return err_labels, err_msg
 
@@ -392,7 +405,7 @@ def _navegar_a_menu(config, conversation_id, conversacion, nuevo_menu, en_horari
     menú (como lista/botones interactivos). Usado por SUBMENU e INICIO — solo
     cambia cómo se calcula `nuevo_menu`. Las etiquetas `menu-*` NO se aplican en
     chatealo: sólo se registran en el log interno (`nota_menu`)."""
-    opciones = _opciones_visibles(nuevo_menu, en_horario)
+    opciones = _opciones_visibles(config, nuevo_menu, en_horario)
     label_anterior = _label_de(conversacion.menu_actual)
     label_nueva = _label_de(nuevo_menu)
     nota_menu = f'menu: {label_anterior} → {label_nueva}'
@@ -522,7 +535,7 @@ def webhook_chatealo(request, secret):
         return HttpResponse(status=200)
 
     en_horario = esta_en_horario()
-    opciones_actuales = _opciones_visibles(conversacion.menu_actual, en_horario)
+    opciones_actuales = _opciones_visibles(config, conversacion.menu_actual, en_horario)
     opcion = _match_opcion(texto, opciones_actuales)
     opcion_db = opcion if _es_opcion_db(opcion) else None
 
@@ -603,7 +616,7 @@ def webhook_chatealo(request, secret):
 
     # DERIVACION
     if not en_horario:
-        opciones_fh = _opciones_visibles(conversacion.menu_actual, False)
+        opciones_fh = _opciones_visibles(config, conversacion.menu_actual, False)
         err_msg = _enviar_menu(
             config, conversation_id, conversacion.menu_actual, opciones_fh,
             conversacion.nombre_contacto,
@@ -624,7 +637,10 @@ def webhook_chatealo(request, secret):
     )
     err_labels = _aplicar_labels_seguro(config, conversation_id, nuevas_labels)
 
-    respuesta = opcion.mensaje_derivacion or 'Te estamos derivando con un agente. En breve te van a contactar.'
+    respuesta = aplicar_variables(
+        opcion.mensaje_derivacion or defaults.DERIVACION_MENSAJE,
+        area=_nombre_area(conversacion.menu_actual), nombre=conversacion.nombre_contacto,
+    )
     url_archivo = _url_archivo(request, opcion)
     if url_archivo:
         respuesta = f'{respuesta}\n{url_archivo}'

@@ -13,6 +13,12 @@ MENSAJE_BIENVENIDA = (
 SALUDO_INICIAL = 'Usted está en el menú principal, por favor seleccione la opción deseada.'
 SALUDO_AREA = 'Usted está en el área de "{area}", por favor seleccione la opción deseada.'
 MENSAJE_DESPEDIDA = 'Gracias por contactarnos. ¡Hasta luego!'
+# "Hablar con un operador" — la opción de derivación que el bot agrega al pie
+# de cada menú. Texto de la opción y mensaje que se le manda al contacto al
+# derivarlo. Ambos se pueden pisar por menú (ver ConfiguracionChatbot y
+# MenuOpcion).
+DERIVACION_TEXTO = 'Hablar con un operador'
+DERIVACION_MENSAJE = 'Te derivamos con un operador. En breve te van a contactar. 🕑'
 MENSAJE_CIERRE_INACTIVIDAD = (
     'Cerramos esta conversación por inactividad. Si necesitás algo más, '
     'volvé a escribirnos y con gusto te ayudamos. ¡Hasta pronto!'
@@ -27,6 +33,8 @@ VARIABLES_POR_CAMPO = {
     'plantilla_saludo_area': ['area', 'nombre'],
     'mensaje_despedida': ['nombre'],
     'mensaje_cierre_inactividad': ['nombre'],
+    'derivacion_mensaje': ['area', 'nombre'],
+    'mensaje_derivacion': ['area', 'nombre'],
 }
 
 DEFAULT_POR_CAMPO = {
@@ -35,6 +43,8 @@ DEFAULT_POR_CAMPO = {
     'plantilla_saludo_area': SALUDO_AREA,
     'mensaje_despedida': MENSAJE_DESPEDIDA,
     'mensaje_cierre_inactividad': MENSAJE_CIERRE_INACTIVIDAD,
+    'derivacion_texto': DERIVACION_TEXTO,
+    'derivacion_mensaje': DERIVACION_MENSAJE,
 }
 
 

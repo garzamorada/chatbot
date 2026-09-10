@@ -22,12 +22,13 @@ def etiquetas_posibles():
 
     - `menu-<slug>`  : navegación (más `menu-raiz` en la raíz). SÓLO log interno,
       NO se aplican en chatealo.
-    - `equipo-<slug>`: al pedir un operador (DERIVACION), con el slug del menú
+    - `equipo-<slug>`: al pedir "Hablar con un operador", con el slug del menú
       donde estaba parado el usuario (o `equipo-general` si fue desde la raíz).
       Esta SÍ se aplica en chatealo; la anterior queda archivada `hist-equipo-<slug>`.
     """
-    from .models import MenuOpcion
+    from .models import ConfiguracionChatbot, MenuOpcion
 
+    config = ConfiguracionChatbot.obtener()
     opciones = list(MenuOpcion.objects.select_related('parent').order_by('orden', 'texto'))
 
     menu = [{'label': LABEL_MENU_RAIZ, 'origen': 'Menú principal', 'activo': True}]
@@ -35,29 +36,20 @@ def etiquetas_posibles():
         if o.tipo == 'SUBMENU':
             menu.append({'label': o.label_menu, 'origen': o.texto, 'activo': o.activo})
 
-    # El bot agrega solo un "Hablar con un operador" al pie de CADA menú (si es
-    # día hábil), que deriva con la etiqueta 'equipo-<slug del menú>' — o
-    # 'equipo-general' desde el menú principal. Además puede haber DERIVACION
-    # cargadas a mano para ruteos especiales.
-    equipo = {
-        f'equipo-{SLUG_EQUIPO_GENERAL}': {
+    # El bot agrega solo un "Hablar con un operador" al pie de cada menú que la
+    # ofrezca (config general para la raíz; MenuOpcion.derivacion_ofrecer por
+    # submenú), que deriva con 'equipo-<slug del menú>' — o 'equipo-general'
+    # desde el menú principal.
+    equipo = {}
+    if config.derivacion_ofrecer:
+        equipo[f'equipo-{SLUG_EQUIPO_GENERAL}'] = {
             'label': f'equipo-{SLUG_EQUIPO_GENERAL}', 'origenes': ['Menú principal'], 'activo': True,
-        },
-    }
+        }
     for o in opciones:
-        if o.tipo == 'SUBMENU' and o.activo:
+        if o.tipo == 'SUBMENU' and o.activo and o.derivacion_ofrecer:
             label = f'equipo-{o.slug}'
             entrada = equipo.setdefault(label, {'label': label, 'origenes': [], 'activo': True})
             if o.texto not in entrada['origenes']:
                 entrada['origenes'].append(o.texto)
-        if o.tipo == 'DERIVACION':
-            slug = o.parent.slug if o.parent else SLUG_EQUIPO_GENERAL
-            label = f'equipo-{slug}'
-            entrada = equipo.setdefault(label, {'label': label, 'origenes': [], 'activo': False})
-            origen = o.parent.texto if o.parent else 'Menú principal'
-            if origen not in entrada['origenes']:
-                entrada['origenes'].append(origen)
-            if o.activo:
-                entrada['activo'] = True
 
     return {'menu': menu, 'equipo': sorted(equipo.values(), key=lambda e: e['label'])}

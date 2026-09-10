@@ -158,6 +158,7 @@
   window.iniciarEditoresWhatsApp = function (contenedor) {
     contenedor.querySelectorAll(
       '[data-campo="respuesta_texto"] textarea, [data-campo="mensaje_derivacion"] textarea, ' +
+      '[data-campo="derivacion_mensaje"] textarea, ' +
       '[data-campo="mensaje_despedida"] textarea, [data-campo="mensaje_bienvenida"] textarea, ' +
       '[data-campo="mensaje_cierre_inactividad"] textarea, ' +
       '[data-campo="plantilla_saludo_inicial"] textarea, [data-campo="plantilla_saludo_area"] textarea'

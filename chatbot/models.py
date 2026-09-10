@@ -91,6 +91,25 @@ class ConfiguracionChatbot(models.Model):
         verbose_name='Archivo adjunto al despedirse',
     )
 
+    # "Hablar con un operador" — opción de derivación que el bot agrega al pie de
+    # cada menú (sólo en horario). Estos son los valores GENERALES; cada menú
+    # puede pisarlos (MenuOpcion.derivacion_*).
+    derivacion_ofrecer = models.BooleanField(
+        default=True, verbose_name='Ofrecer "Hablar con un operador" en el menú principal',
+        help_text='Si se apaga, el menú principal no ofrece derivación a un operador. '
+                   'Cada submenú tiene su propio interruptor.',
+    )
+    derivacion_texto = models.CharField(
+        max_length=24, blank=True, verbose_name='Texto de la opción de operador',
+        help_text='Cómo aparece la opción en el listado. Máx. 24 caracteres (límite de WhatsApp). '
+                   'Si se deja vacío: "Hablar con un operador".',
+    )
+    derivacion_mensaje = models.TextField(
+        blank=True, verbose_name='Mensaje al derivar a un operador',
+        help_text='Texto que recibe el contacto al pedir un operador. Variables: {area}, {nombre}. '
+                   'Si se deja vacío se usa uno genérico. Cada submenú puede tener el suyo.',
+    )
+
     activo = models.BooleanField(
         default=True, verbose_name='Bot activo',
         help_text='Interruptor general. Si se apaga, el bot NO responde ningún mensaje '
@@ -132,12 +151,11 @@ class ConfiguracionChatbot(models.Model):
 TIPO_OPCION_CHOICES = (
     ('SUBMENU', 'Menú — agrupa otras opciones'),
     ('RESPUESTA', 'Respuesta directa — el bot contesta un texto'),
-    ('DERIVACION', 'Derivación — se deriva a un agente/área'),
 )
-# 'VOLVER' / 'INICIO' / 'TERMINAR' se descontinuaron como opciones cargables:
-# el bot agrega solo, al pie de cada menú, "Volver al menú principal" (salvo en
-# el menú principal), "Hablar con un operador" (si es día hábil) y "Terminar la
-# conversación". Ver chatbot/api_views.py::_opciones_nav.
+# Sólo hay dos tipos cargables. El resto lo agrega el bot solo al pie de cada
+# menú: "Volver al menú principal" (salvo en el principal), "Hablar con un
+# operador" (= derivación; sólo en horario y si el menú la ofrece) y "Terminar
+# la conversación". Ver chatbot/api_views.py::_opciones_nav.
 
 
 class MenuOpcion(models.Model):
@@ -158,20 +176,30 @@ class MenuOpcion(models.Model):
         max_length=12, choices=TIPO_OPCION_CHOICES, default='SUBMENU', verbose_name='Tipo',
     )
 
-    # tipo = RESPUESTA / VOLVER / INICIO / TERMINAR (mensaje opcional)
     respuesta_texto = models.TextField(
         blank=True, verbose_name='Texto de respuesta',
-        help_text='Texto que el bot devuelve al usuario cuando elige esta opción. '
-                   'Solo aplica al tipo Respuesta: Menú/Volver/Inicio navegan sin mensaje propio, '
-                   'y Terminar usa el mensaje único de ConfiguracionChatbot.mensaje_despedida.',
+        help_text='Sólo tipo Respuesta: el texto que el bot devuelve al elegir esta opción. '
+                   'Un Menú sólo muestra su listado; la despedida y la derivación se configuran aparte.',
     )
 
-    # tipo = DERIVACION — el área/equipo que recibe la derivación se resuelve
-    # del lado de chatealo (reglas de automatización sobre la etiqueta
-    # 'equipo-<slug>'); acá solo se aplica la etiqueta y se deja constancia en el log.
+    # DERIVACIÓN ("Hablar con un operador"): el bot agrega esta opción al pie de
+    # este menú (sólo en horario). El área/equipo que la recibe se resuelve del
+    # lado de chatealo por la etiqueta 'equipo-<slug de este menú>'. Estos campos
+    # pisan, para este menú, los valores generales de ConfiguracionChatbot.
+    derivacion_ofrecer = models.BooleanField(
+        default=True, verbose_name='Ofrecer "Hablar con un operador" en este menú',
+        help_text='Sólo aplica al tipo Menú. Si se apaga, este menú no ofrece derivación a un operador.',
+    )
+    derivacion_texto = models.CharField(
+        max_length=24, blank=True, verbose_name='Texto de la opción de operador',
+        help_text='Sólo Menú. Cómo aparece la opción en este menú. Máx. 24 caracteres. '
+                   'Si se deja vacío se usa el texto general.',
+    )
     mensaje_derivacion = models.TextField(
-        blank=True, verbose_name='Mensaje al derivar',
-        help_text='Texto que el bot muestra al usuario al derivarlo (ej: horario de atención del área).',
+        blank=True, verbose_name='Mensaje al derivar a un operador',
+        help_text='Sólo Menú. Texto que recibe el contacto al pedir un operador desde este menú '
+                   '(ej: horario de atención del área). Variables: {area}, {nombre}. '
+                   'Si se deja vacío se usa el mensaje general.',
     )
 
     archivo = models.ForeignKey(

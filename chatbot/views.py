@@ -18,9 +18,9 @@ from logs.models import UserLog
 
 from . import chatealo_client
 from .forms import (
-    ArchivoChatbotForm, ConfiguracionChatbotForm, DespedidaChatbotForm,
-    DiaExcepcionalRapidoForm, InboxChatealoForm, MenuOpcionForm, SaludosChatbotForm,
-    TiemposChatbotForm,
+    ArchivoChatbotForm, ConfiguracionChatbotForm, DerivacionChatbotForm,
+    DespedidaChatbotForm, DiaExcepcionalRapidoForm, InboxChatealoForm,
+    MenuOpcionForm, SaludosChatbotForm, TiemposChatbotForm,
 )
 from .horarios import (
     expandir_rango_a_horas, generar_slots_grilla, merge_horas_a_rangos, sincronizar_feriados,
@@ -85,6 +85,7 @@ def panel_chatbot(request):
         'config_form': ConfiguracionChatbotForm(instance=config),
         'despedida_form': DespedidaChatbotForm(instance=config),
         'saludos_form': SaludosChatbotForm(instance=config),
+        'derivacion_form': DerivacionChatbotForm(instance=config),
         'tiempos_form': TiemposChatbotForm(instance=config),
         'opciones_raiz': opciones_raiz,
         'inboxes': [(ib, InboxChatealoForm(instance=ib, prefix=f'inbox{ib.pk}')) for ib in inboxes],
@@ -153,6 +154,23 @@ def editar_saludos(request):
             messages.success(request, 'Saludos guardados.')
         else:
             messages.error(request, 'No se pudieron guardar los saludos.')
+    return redirect(reverse('chatbot:panel') + '#tab-mensajes')
+
+
+@login_required
+def editar_derivacion(request):
+    """Config GENERAL de "Hablar con un operador": si el menú principal la
+    ofrece, y el texto/mensaje por defecto (cada submenú puede pisarlos)."""
+    _check(request, 'gestionar_menu_chatbot')
+    config = ConfiguracionChatbot.obtener()
+    if request.method == 'POST':
+        form = DerivacionChatbotForm(request.POST, instance=config)
+        if form.is_valid():
+            form.save()
+            UserLog.objects.create(usuario=request.user, accion='Editó la derivación a operador de Chatbot')
+            messages.success(request, 'Derivación a operador guardada.')
+        else:
+            messages.error(request, 'No se pudo guardar la derivación a operador.')
     return redirect(reverse('chatbot:panel') + '#tab-mensajes')
 
 

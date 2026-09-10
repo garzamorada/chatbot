@@ -111,20 +111,46 @@ class MatchOpcionTests(TestCase):
 
 
 class OpcionesNavTests(TestCase):
+    def setUp(self):
+        self.config = ConfiguracionChatbot.obtener()
+
     def test_raiz_sin_volver_al_principal(self):
-        navs = api_views._opciones_nav(None, en_horario=True)
-        tipos = [n.tipo for n in navs]
+        tipos = [n.tipo for n in api_views._opciones_nav(self.config, None, en_horario=True)]
         self.assertEqual(tipos, ['DERIVACION', 'TERMINAR'])
 
     def test_submenu_incluye_volver_al_principal(self):
         op = MenuOpcion(texto='Beneficios', tipo='SUBMENU')
-        tipos = [n.tipo for n in api_views._opciones_nav(op, en_horario=True)]
+        tipos = [n.tipo for n in api_views._opciones_nav(self.config, op, en_horario=True)]
         self.assertEqual(tipos, ['INICIO', 'DERIVACION', 'TERMINAR'])
 
     def test_operador_solo_en_horario(self):
         op = MenuOpcion(texto='Beneficios', tipo='SUBMENU')
-        tipos = [n.tipo for n in api_views._opciones_nav(op, en_horario=False)]
+        tipos = [n.tipo for n in api_views._opciones_nav(self.config, op, en_horario=False)]
         self.assertEqual(tipos, ['INICIO', 'TERMINAR'])
+
+    def test_operador_desactivado_por_config_en_la_raiz(self):
+        self.config.derivacion_ofrecer = False
+        tipos = [n.tipo for n in api_views._opciones_nav(self.config, None, en_horario=True)]
+        self.assertEqual(tipos, ['TERMINAR'])
+
+    def test_submenu_puede_desactivar_operador(self):
+        op = MenuOpcion(texto='Beneficios', tipo='SUBMENU', derivacion_ofrecer=False)
+        tipos = [n.tipo for n in api_views._opciones_nav(self.config, op, en_horario=True)]
+        self.assertEqual(tipos, ['INICIO', 'TERMINAR'])
+
+    def test_submenu_pisa_texto_y_mensaje_de_derivacion(self):
+        op = MenuOpcion(texto='Beneficios', tipo='SUBMENU',
+                        derivacion_texto='Contactar a Beneficios',
+                        mensaje_derivacion='Te paso con Beneficios (L a V 9 a 17).')
+        deriv = [n for n in api_views._opciones_nav(self.config, op, en_horario=True)
+                 if n.tipo == 'DERIVACION'][0]
+        self.assertEqual(deriv.texto, 'Contactar a Beneficios')
+        self.assertEqual(deriv.mensaje_derivacion, 'Te paso con Beneficios (L a V 9 a 17).')
+
+    def test_texto_operador_por_defecto(self):
+        deriv = [n for n in api_views._opciones_nav(self.config, None, en_horario=True)
+                 if n.tipo == 'DERIVACION'][0]
+        self.assertEqual(deriv.texto, defaults.DERIVACION_TEXTO)
 
     def test_items_menu_numera_y_recorta(self):
         ops = [MenuOpcion(texto='x' * 40) for _ in range(4)]
@@ -255,18 +281,24 @@ class InboxTests(TestCase):
 
 
 class EtiquetasPosiblesTests(TestCase):
-    def test_lista_menu_y_equipo(self):
-        beneficios = MenuOpcion.objects.create(texto='Beneficios', tipo='SUBMENU', slug='beneficios')
-        MenuOpcion.objects.create(texto='Operador', tipo='DERIVACION', parent=beneficios, slug='op-benef')
-        MenuOpcion.objects.create(texto='Operador raíz', tipo='DERIVACION', slug='op-raiz')
+    def test_equipo_por_cada_submenu_que_ofrece_operador(self):
+        MenuOpcion.objects.create(texto='Beneficios', tipo='SUBMENU', slug='beneficios')
+        MenuOpcion.objects.create(texto='Turismo', tipo='SUBMENU', slug='turismo', derivacion_ofrecer=False)
 
         et = etiquetas_posibles()
-        labels_menu = [e['label'] for e in et['menu']]
-        self.assertIn('menu-raiz', labels_menu)
-        self.assertIn('menu-beneficios', labels_menu)
+        self.assertIn('menu-raiz', [e['label'] for e in et['menu']])
+        self.assertIn('menu-beneficios', [e['label'] for e in et['menu']])
         labels_equipo = [e['label'] for e in et['equipo']]
-        self.assertIn('equipo-beneficios', labels_equipo)
-        self.assertIn('equipo-general', labels_equipo)
+        self.assertIn('equipo-general', labels_equipo)      # menú principal
+        self.assertIn('equipo-beneficios', labels_equipo)   # submenú que la ofrece
+        self.assertNotIn('equipo-turismo', labels_equipo)   # submenú que la desactivó
+
+    def test_config_general_apaga_equipo_general(self):
+        config = ConfiguracionChatbot.obtener()
+        config.derivacion_ofrecer = False
+        config.save()
+        labels_equipo = [e['label'] for e in etiquetas_posibles()['equipo']]
+        self.assertNotIn('equipo-general', labels_equipo)
 
 
 class HorariosHelpersTests(TestCase):
@@ -474,6 +506,29 @@ class WebhookIntegrationTests(TestCase):
         self.assertEqual(self._conv().label_equipo_actual, 'equipo-beneficios')
         self.assertEqual(self._ult_log().accion, 'DERIVACION')
 
+    def test_derivacion_usa_texto_y_mensaje_configurados_del_menu(self, cli):
+        self.beneficios.derivacion_texto = 'Contactar a Beneficios'
+        self.beneficios.mensaje_derivacion = 'Te paso con Beneficios (L a V 9 a 17).'
+        self.beneficios.save()
+        self._webhook('hola', 1)
+        cli.reset_mock()
+        self._webhook('1', 2)                 # entra a Beneficios -> manda su menú
+        self.assertIn('Contactar a Beneficios', cli.enviar_mensaje.call_args[0][2])
+        cli.reset_mock()
+        self._webhook(self.OP_BENEF, 3)       # elige "Hablar con un operador" (pos. 3)
+        self.assertIn('Te paso con Beneficios (L a V 9 a 17).', cli.enviar_mensaje.call_args[0][2])
+
+    def test_menu_puede_desactivar_derivacion(self, cli):
+        self.beneficios.derivacion_ofrecer = False
+        self.beneficios.save()
+        self._webhook('hola', 1)
+        cli.reset_mock()
+        self._webhook('1', 2)                 # entra a Beneficios
+        _, kwargs = cli.enviar_mensaje.call_args
+        # Beneficios => [1 Kits, 2 Volver al menú principal, 3 Terminar] (sin operador)
+        self.assertEqual([it['value'] for it in kwargs['items']], ['1', '2', '3'])
+        self.assertNotIn('operador', cli.enviar_mensaje.call_args[0][2].lower())
+
     def test_menu_se_manda_como_lista_interactiva(self, cli):
         self._webhook('hola', 1)
         _, kwargs = cli.enviar_mensaje.call_args
@@ -675,6 +730,17 @@ class PanelViewsTests(TestCase):
         })
         self.assertEqual(r.status_code, 302)
         self.assertEqual(ConfiguracionChatbot.obtener().mensaje_bienvenida, 'Hola, soy el bot')
+
+    def test_editar_derivacion_guarda(self):
+        r = self.client.post('/chatbot/config/derivacion/', {
+            'derivacion_texto': 'Hablar con una persona',
+            'derivacion_mensaje': 'Ya te contactamos.',
+            # sin 'derivacion_ofrecer' => checkbox desmarcado
+        })
+        self.assertEqual(r.status_code, 302)
+        config = ConfiguracionChatbot.obtener()
+        self.assertFalse(config.derivacion_ofrecer)
+        self.assertEqual(config.derivacion_texto, 'Hablar con una persona')
 
     def test_editar_inbox(self):
         ib = InboxChatealo.objects.create(inbox_id=188, nombre_detectado='wpp')
