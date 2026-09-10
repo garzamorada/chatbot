@@ -4,6 +4,15 @@ LABEL_MENU_RAIZ = 'menu-raiz'
 SLUG_EQUIPO_GENERAL = 'general'
 
 
+def normalizar_slug_equipo(valor, fallback):
+    """Normaliza el slug de equipo elegido en el panel (tolera que venga con o
+    sin el prefijo 'equipo-'); si queda vacío usa `fallback`."""
+    v = (valor or '').strip().lower()
+    if v.startswith('equipo-'):
+        v = v[len('equipo-'):]
+    return v or fallback
+
+
 def aplicar_transicion_labels(labels_actuales, label_anterior, label_nuevo):
     """Devuelve el set completo de etiquetas a mandar a chatealo: si había una
     `label_anterior` (distinta de la nueva), se reemplaza por 'hist-<label_anterior>'
@@ -38,16 +47,18 @@ def etiquetas_posibles():
 
     # El bot agrega solo un "Hablar con un operador" al pie de cada menú que la
     # ofrezca (config general para la raíz; MenuOpcion.derivacion_ofrecer por
-    # submenú), que deriva con 'equipo-<slug del menú>' — o 'equipo-general'
-    # desde el menú principal.
+    # submenú). Deriva con 'equipo-<slug del menú>' — o 'equipo-general' desde el
+    # principal — salvo que se haya elegido otro equipo (derivacion_equipo).
     equipo = {}
     if config.derivacion_ofrecer:
-        equipo[f'equipo-{SLUG_EQUIPO_GENERAL}'] = {
-            'label': f'equipo-{SLUG_EQUIPO_GENERAL}', 'origenes': ['Menú principal'], 'activo': True,
+        slug = normalizar_slug_equipo(config.derivacion_equipo, SLUG_EQUIPO_GENERAL)
+        equipo[f'equipo-{slug}'] = {
+            'label': f'equipo-{slug}', 'origenes': ['Menú principal'], 'activo': True,
         }
     for o in opciones:
         if o.tipo == 'SUBMENU' and o.activo and o.derivacion_ofrecer:
-            label = f'equipo-{o.slug}'
+            slug = normalizar_slug_equipo(o.derivacion_equipo, o.slug)
+            label = f'equipo-{slug}'
             entrada = equipo.setdefault(label, {'label': label, 'origenes': [], 'activo': True})
             if o.texto not in entrada['origenes']:
                 entrada['origenes'].append(o.texto)

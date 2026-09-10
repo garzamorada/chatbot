@@ -257,6 +257,16 @@
             {{ derivacion_form.derivacion_mensaje }}
             <div class="form-text">{{ derivacion_form.derivacion_mensaje.help_text }}</div>
           </div>
+          <div class="mb-3" style="max-width: 320px;">
+            <label class="form-label fw-semibold small" for="{{ derivacion_form.derivacion_equipo.id_for_label }}">
+              {{ derivacion_form.derivacion_equipo.label }}
+            </label>
+            <div class="input-group">
+              <span class="input-group-text">equipo-</span>
+              {{ derivacion_form.derivacion_equipo }}
+            </div>
+            <div class="form-text">{{ derivacion_form.derivacion_equipo.help_text }}</div>
+          </div>
           {% if perms.chatbot.gestionar_menu_chatbot %}
           <button type="submit" class="btn btn-outline-primary btn-sm mt-2"><i class="bi bi-save"></i> Guardar</button>
           {% endif %}

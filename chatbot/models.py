@@ -109,6 +109,11 @@ class ConfiguracionChatbot(models.Model):
         help_text='Texto que recibe el contacto al pedir un operador. Variables: {area}, {nombre}. '
                    'Si se deja vacío se usa uno genérico. Cada submenú puede tener el suyo.',
     )
+    derivacion_equipo = models.SlugField(
+        max_length=100, blank=True, verbose_name='Equipo al que se transfiere (menú principal)',
+        help_text='Slug del equipo de chatealo (se aplica como etiqueta "equipo-<slug>"). '
+                   'Si se deja vacío, desde el menú principal se usa "equipo-general".',
+    )
 
     activo = models.BooleanField(
         default=True, verbose_name='Bot activo',
@@ -183,9 +188,9 @@ class MenuOpcion(models.Model):
     )
 
     # DERIVACIÓN ("Hablar con un operador"): el bot agrega esta opción al pie de
-    # este menú (sólo en horario). El área/equipo que la recibe se resuelve del
-    # lado de chatealo por la etiqueta 'equipo-<slug de este menú>'. Estos campos
-    # pisan, para este menú, los valores generales de ConfiguracionChatbot.
+    # este menú (sólo en horario). Por defecto la conversación se transfiere al
+    # equipo 'equipo-<slug de este menú>'; se puede apuntar a otro con
+    # `derivacion_equipo`. Estos campos pisan los generales de ConfiguracionChatbot.
     derivacion_ofrecer = models.BooleanField(
         default=True, verbose_name='Ofrecer "Hablar con un operador" en este menú',
         help_text='Sólo aplica al tipo Menú. Si se apaga, este menú no ofrece derivación a un operador.',
@@ -200,6 +205,11 @@ class MenuOpcion(models.Model):
         help_text='Sólo Menú. Texto que recibe el contacto al pedir un operador desde este menú '
                    '(ej: horario de atención del área). Variables: {area}, {nombre}. '
                    'Si se deja vacío se usa el mensaje general.',
+    )
+    derivacion_equipo = models.SlugField(
+        max_length=100, blank=True, verbose_name='Equipo al que se transfiere',
+        help_text='Sólo Menú. Slug del equipo de chatealo (etiqueta "equipo-<slug>"). '
+                   'Si se deja vacío se usa el slug de este menú.',
     )
 
     archivo = models.ForeignKey(

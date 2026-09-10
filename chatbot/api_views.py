@@ -11,7 +11,10 @@ from django.views.decorators.http import require_POST
 from . import chatealo_client, defaults, firma
 from .defaults import aplicar_variables
 from .horarios import esta_en_horario, mensaje_fuera_de_horario
-from .labels import LABEL_MENU_RAIZ, SLUG_EQUIPO_GENERAL, aplicar_transicion_labels
+from .labels import (
+    LABEL_MENU_RAIZ, SLUG_EQUIPO_GENERAL, aplicar_transicion_labels,
+    normalizar_slug_equipo,
+)
 from .models import ConfiguracionChatbot, Conversacion, ConversacionLog, InboxChatealo, MenuOpcion
 
 logger = logging.getLogger('chatbot.webhook')
@@ -130,6 +133,15 @@ def _derivacion_config(config, opcion_menu):
     texto = (opcion_menu.derivacion_texto or '').strip() or grl_texto
     mensaje = (opcion_menu.mensaje_derivacion or '').strip() or grl_mensaje
     return opcion_menu.derivacion_ofrecer, texto[:24], mensaje
+
+
+def _derivacion_equipo(config, opcion_menu):
+    """Slug del equipo al que se transfiere la conversación al pedir un operador.
+    Por defecto el del menú actual (o 'general' desde el principal); cada menú y
+    la config general pueden apuntar a otro."""
+    if opcion_menu is None:
+        return normalizar_slug_equipo(config.derivacion_equipo, SLUG_EQUIPO_GENERAL)
+    return normalizar_slug_equipo(opcion_menu.derivacion_equipo, opcion_menu.slug)
 
 
 def _opciones_nav(config, opcion_menu, en_horario):
@@ -627,11 +639,10 @@ def webhook_chatealo(request, secret):
         _log(conversacion, texto, opcion_db, 'FUERA_HORARIO', err_msg)
         return HttpResponse(status=200)
 
-    # etiqueta 'equipo-<slug del menú actual>' (el menú donde el usuario
-    # estaba parado cuando pidió hablar con un operador). Si pidió derivación
-    # desde el menú principal no hay categoría todavía: 'equipo-general'.
-    slug_equipo = conversacion.menu_actual.slug if conversacion.menu_actual else SLUG_EQUIPO_GENERAL
-    label_nueva_equipo = f'equipo-{slug_equipo}'
+    # equipo al que se transfiere: por defecto el del menú donde estaba parado
+    # el usuario ('equipo-general' desde el principal), salvo que el menú o la
+    # config general apunten a otro equipo.
+    label_nueva_equipo = f'equipo-{_derivacion_equipo(config, conversacion.menu_actual)}'
     nuevas_labels = aplicar_transicion_labels(
         labels_actuales, conversacion.label_equipo_actual, label_nueva_equipo,
     )

@@ -152,6 +152,21 @@ class OpcionesNavTests(TestCase):
                  if n.tipo == 'DERIVACION'][0]
         self.assertEqual(deriv.texto, defaults.DERIVACION_TEXTO)
 
+    def test_equipo_por_defecto_es_el_del_menu(self):
+        op = MenuOpcion(texto='Beneficios', tipo='SUBMENU', slug='beneficios')
+        self.assertEqual(api_views._derivacion_equipo(self.config, op), 'beneficios')
+        self.assertEqual(api_views._derivacion_equipo(self.config, None), 'general')
+
+    def test_equipo_se_puede_apuntar_a_otro(self):
+        op = MenuOpcion(texto='Beneficios', tipo='SUBMENU', slug='beneficios',
+                        derivacion_equipo='administracion')
+        self.assertEqual(api_views._derivacion_equipo(self.config, op), 'administracion')
+        # tolera el prefijo 'equipo-'
+        op.derivacion_equipo = 'equipo-ventas'
+        self.assertEqual(api_views._derivacion_equipo(self.config, op), 'ventas')
+        self.config.derivacion_equipo = 'mesa-central'
+        self.assertEqual(api_views._derivacion_equipo(self.config, None), 'mesa-central')
+
     def test_items_menu_numera_y_recorta(self):
         ops = [MenuOpcion(texto='x' * 40) for _ in range(4)]
         items = api_views._items_menu(ops)
@@ -292,6 +307,13 @@ class EtiquetasPosiblesTests(TestCase):
         self.assertIn('equipo-general', labels_equipo)      # menú principal
         self.assertIn('equipo-beneficios', labels_equipo)   # submenú que la ofrece
         self.assertNotIn('equipo-turismo', labels_equipo)   # submenú que la desactivó
+
+    def test_equipo_refleja_el_override_del_menu(self):
+        MenuOpcion.objects.create(texto='Beneficios', tipo='SUBMENU', slug='beneficios',
+                                  derivacion_equipo='administracion')
+        labels_equipo = [e['label'] for e in etiquetas_posibles()['equipo']]
+        self.assertIn('equipo-administracion', labels_equipo)
+        self.assertNotIn('equipo-beneficios', labels_equipo)
 
     def test_config_general_apaga_equipo_general(self):
         config = ConfiguracionChatbot.obtener()
@@ -505,6 +527,17 @@ class WebhookIntegrationTests(TestCase):
         self._webhook(self.OP_BENEF, 3)       # "Hablar con un operador" dentro de Beneficios
         self.assertEqual(self._conv().label_equipo_actual, 'equipo-beneficios')
         self.assertEqual(self._ult_log().accion, 'DERIVACION')
+
+    def test_derivacion_puede_transferir_a_otro_equipo(self, cli):
+        self.beneficios.derivacion_equipo = 'administracion'
+        self.beneficios.save()
+        self._webhook('hola', 1)
+        self._webhook('1', 2)                 # entra a Beneficios
+        cli.reset_mock()
+        self._webhook(self.OP_BENEF, 3)
+        self.assertEqual(self._conv().label_equipo_actual, 'equipo-administracion')
+        labels_enviadas = cli.actualizar_labels.call_args[0][2]
+        self.assertIn('equipo-administracion', labels_enviadas)
 
     def test_derivacion_usa_texto_y_mensaje_configurados_del_menu(self, cli):
         self.beneficios.derivacion_texto = 'Contactar a Beneficios'
@@ -735,12 +768,14 @@ class PanelViewsTests(TestCase):
         r = self.client.post('/chatbot/config/derivacion/', {
             'derivacion_texto': 'Hablar con una persona',
             'derivacion_mensaje': 'Ya te contactamos.',
+            'derivacion_equipo': 'mesa-central',
             # sin 'derivacion_ofrecer' => checkbox desmarcado
         })
         self.assertEqual(r.status_code, 302)
         config = ConfiguracionChatbot.obtener()
         self.assertFalse(config.derivacion_ofrecer)
         self.assertEqual(config.derivacion_texto, 'Hablar con una persona')
+        self.assertEqual(config.derivacion_equipo, 'mesa-central')
 
     def test_editar_inbox(self):
         ib = InboxChatealo.objects.create(inbox_id=188, nombre_detectado='wpp')

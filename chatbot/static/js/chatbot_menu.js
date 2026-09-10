@@ -278,7 +278,7 @@
     // menú. "Hablar con un operador" también, pero es configurable por menú:
     // derivacion_ofrecer / derivacion_texto / mensaje_derivacion (sólo Menú).
     SUBMENU: ['texto', 'slug', 'parent', 'derivacion_ofrecer', 'derivacion_texto',
-              'mensaje_derivacion', 'archivo', 'activo'],
+              'mensaje_derivacion', 'derivacion_equipo', 'archivo', 'activo'],
     // 'boton_texto'/'boton_url' quedan ocultos por ahora: el envío de botones a
     // WhatsApp está desactivado (BOTON_RESPUESTA_HABILITADO en api_views.py) hasta
     // resolver el envío saliente con chatealo.

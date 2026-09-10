@@ -41,7 +41,7 @@ class MenuOpcionForm(forms.ModelForm):
             'texto', 'slug', 'parent', 'tipo',
             'respuesta_texto',
             'boton_texto', 'boton_url',
-            'derivacion_ofrecer', 'derivacion_texto', 'mensaje_derivacion',
+            'derivacion_ofrecer', 'derivacion_texto', 'mensaje_derivacion', 'derivacion_equipo',
             'archivo', 'activo',
         ]
         widgets = {
@@ -124,7 +124,7 @@ class DerivacionChatbotForm(DefaultsMixin, forms.ModelForm):
 
     class Meta:
         model = ConfiguracionChatbot
-        fields = ['derivacion_ofrecer', 'derivacion_texto', 'derivacion_mensaje']
+        fields = ['derivacion_ofrecer', 'derivacion_texto', 'derivacion_mensaje', 'derivacion_equipo']
         widgets = {
             'derivacion_mensaje': forms.Textarea(attrs={'rows': 3}),
         }
