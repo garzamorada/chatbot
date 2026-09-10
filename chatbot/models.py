@@ -133,10 +133,11 @@ TIPO_OPCION_CHOICES = (
     ('SUBMENU', 'Menú — agrupa otras opciones'),
     ('RESPUESTA', 'Respuesta directa — el bot contesta un texto'),
     ('DERIVACION', 'Derivación — se deriva a un agente/área'),
-    ('VOLVER', 'Volver al menú anterior'),
-    ('INICIO', 'Ir al menú principal'),
-    ('TERMINAR', 'Terminar la conversación'),
 )
+# 'VOLVER' / 'INICIO' / 'TERMINAR' se descontinuaron como opciones cargables:
+# el bot agrega solo, al pie de cada menú, "Volver al menú principal" (salvo en
+# el menú principal), "Hablar con un operador" (si es día hábil) y "Terminar la
+# conversación". Ver chatbot/api_views.py::_opciones_nav.
 
 
 class MenuOpcion(models.Model):

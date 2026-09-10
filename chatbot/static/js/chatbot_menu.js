@@ -273,19 +273,16 @@
   }
 
   var CAMPOS_POR_TIPO = {
-    // Submenú/Volver/Inicio son navegación pura: no llevan texto propio.
     // 'orden' no está en el form: se define arrastrando en el árbol.
+    // Volver al menú principal / hablar con un operador / terminar ya NO se
+    // cargan: el bot los agrega solo al pie de cada menú (ver _opciones_nav en
+    // api_views.py).
     SUBMENU: ['texto', 'slug', 'parent', 'archivo', 'activo'],
     // 'boton_texto'/'boton_url' quedan ocultos por ahora: el envío de botones a
     // WhatsApp está desactivado (BOTON_RESPUESTA_HABILITADO en api_views.py) hasta
     // resolver el envío saliente con chatealo.
     RESPUESTA: ['texto', 'slug', 'parent', 'respuesta_texto', 'archivo', 'activo'],
     DERIVACION: ['texto', 'slug', 'parent', 'mensaje_derivacion', 'archivo', 'activo'],
-    VOLVER: ['texto', 'slug', 'parent', 'activo'],
-    INICIO: ['texto', 'slug', 'parent', 'activo'],
-    // "Terminar" tampoco: el mensaje de despedida es único y se edita en la
-    // configuración general del panel (ver nota_terminar abajo).
-    TERMINAR: ['texto', 'slug', 'parent', 'nota_terminar', 'activo'],
   };
 
   function actualizarCamposSegunTipo() {

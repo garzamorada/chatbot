@@ -21,15 +21,27 @@ def _base(config):
     return f'{config.chatealo_base_url.rstrip("/")}/api/v1/accounts/{config.chatealo_account_id}'
 
 
-def enviar_mensaje(config, conversation_id, texto, boton=None):
+def enviar_mensaje(config, conversation_id, texto, boton=None, items=None):
     """POST .../conversations/{id}/messages — mensaje saliente.
 
-    Si `boton` es un dict con 'texto' y 'url', se manda como `content_type: cards`
-    con una acción de tipo link (botón de acción). El canal (WhatsApp/webchat/…)
-    decide cómo renderizarlo; si no lo soporta, el `content` de texto igual llega.
+    - `items`: lista de {'title', 'value'} → se manda como `content_type:
+      input_select`, que WhatsApp renderiza como botones de respuesta (1-3) o
+      lista desplegable (4-10). El `content` de texto queda como fallback.
+    - `boton`: dict con 'texto' y 'url' → `content_type: cards` con una acción
+      de tipo link (botón de acción).
+    - sin nada de eso → texto plano.
+
+    El canal decide cómo renderizarlo; si no lo soporta, el `content` igual llega.
     """
     url = f'{_base(config)}/conversations/{conversation_id}/messages'
-    if boton and boton.get('texto') and boton.get('url'):
+    if items:
+        body = {
+            'message_type': 'outgoing',
+            'content': texto,
+            'content_type': 'input_select',
+            'content_attributes': {'items': list(items)},
+        }
+    elif boton and boton.get('texto') and boton.get('url'):
         body = {
             'message_type': 'outgoing',
             'content': texto,

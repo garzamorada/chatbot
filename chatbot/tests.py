@@ -110,6 +110,33 @@ class MatchOpcionTests(TestCase):
         self.assertIsNone(api_views._match_opcion('9', self.opciones))
 
 
+class OpcionesNavTests(TestCase):
+    def test_raiz_sin_volver_al_principal(self):
+        navs = api_views._opciones_nav(None, en_horario=True)
+        tipos = [n.tipo for n in navs]
+        self.assertEqual(tipos, ['DERIVACION', 'TERMINAR'])
+
+    def test_submenu_incluye_volver_al_principal(self):
+        op = MenuOpcion(texto='Beneficios', tipo='SUBMENU')
+        tipos = [n.tipo for n in api_views._opciones_nav(op, en_horario=True)]
+        self.assertEqual(tipos, ['INICIO', 'DERIVACION', 'TERMINAR'])
+
+    def test_operador_solo_en_horario(self):
+        op = MenuOpcion(texto='Beneficios', tipo='SUBMENU')
+        tipos = [n.tipo for n in api_views._opciones_nav(op, en_horario=False)]
+        self.assertEqual(tipos, ['INICIO', 'TERMINAR'])
+
+    def test_items_menu_numera_y_recorta(self):
+        ops = [MenuOpcion(texto='x' * 40) for _ in range(4)]
+        items = api_views._items_menu(ops)
+        self.assertEqual([it['value'] for it in items], ['1', '2', '3', '4'])
+        self.assertTrue(all(len(it['title']) <= 24 for it in items))
+
+    def test_items_menu_none_si_mas_de_10(self):
+        ops = [MenuOpcion(texto=f'op {i}') for i in range(11)]
+        self.assertIsNone(api_views._items_menu(ops))
+
+
 class EncabezadoMenuTests(TestCase):
     def setUp(self):
         self.config = ConfiguracionChatbot.obtener()
@@ -292,17 +319,19 @@ class WebhookIntegrationTests(TestCase):
         self.secret = self.config.webhook_secret
         self.client = Client()
 
+        # Sólo opciones "de contenido": volver / operador / terminar los agrega
+        # el bot solo al pie de cada menú (ver api_views._opciones_nav).
+        # En la raíz => [1 Beneficios, 2 Hablar con un operador, 3 Terminar].
+        # En Beneficios => [1 Kits, 2 Volver al menú principal,
+        #                   3 Hablar con un operador, 4 Terminar].
         self.beneficios = MenuOpcion.objects.create(texto='Beneficios', tipo='SUBMENU', slug='beneficios', orden=1)
         self.kits = MenuOpcion.objects.create(
             texto='Kits escolares', tipo='RESPUESTA', slug='kits',
             parent=self.beneficios, respuesta_texto='Los kits se retiran en la sede.', orden=1,
         )
-        MenuOpcion.objects.create(texto='Volver', tipo='VOLVER', slug='volver-benef', parent=self.beneficios, orden=2)
-        self.operador = MenuOpcion.objects.create(
-            texto='Hablar con alguien', tipo='DERIVACION', slug='operador',
-            mensaje_derivacion='Te derivamos con un agente.', orden=2,
-        )
-        MenuOpcion.objects.create(texto='Terminar', tipo='TERMINAR', slug='terminar', orden=3)
+        self.OP_RAIZ = '2'          # "Hablar con un operador" en la raíz
+        self.FIN_RAIZ = '3'         # "Terminar la conversación" en la raíz
+        self.OP_BENEF = '3'         # "Hablar con un operador" dentro de Beneficios
 
     # ---- helpers ----
     def _webhook(self, content, message_id, *, event='message_created', labels=None,
@@ -428,7 +457,7 @@ class WebhookIntegrationTests(TestCase):
     def test_derivacion_aplica_equipo_y_finaliza(self, cli):
         self._webhook('hola', 1)
         cli.reset_mock()
-        self._webhook('Hablar con alguien', 2)
+        self._webhook(self.OP_RAIZ, 2)   # "Hablar con un operador" (auto) en la raíz
         conv = self._conv()
         self.assertTrue(conv.finalizado)
         self.assertEqual(conv.label_equipo_actual, 'equipo-general')
@@ -437,9 +466,25 @@ class WebhookIntegrationTests(TestCase):
         self.assertIn('equipo-general', labels_enviadas)
         self.assertEqual(self._ult_log().accion, 'DERIVACION')
 
+    def test_derivacion_desde_submenu_usa_equipo_del_menu(self, cli):
+        self._webhook('hola', 1)
+        self._webhook('1', 2)                 # entra a Beneficios
+        cli.reset_mock()
+        self._webhook(self.OP_BENEF, 3)       # "Hablar con un operador" dentro de Beneficios
+        self.assertEqual(self._conv().label_equipo_actual, 'equipo-beneficios')
+        self.assertEqual(self._ult_log().accion, 'DERIVACION')
+
+    def test_menu_se_manda_como_lista_interactiva(self, cli):
+        self._webhook('hola', 1)
+        _, kwargs = cli.enviar_mensaje.call_args
+        items = kwargs.get('items')
+        self.assertIsNotNone(items)
+        self.assertEqual([it['value'] for it in items], ['1', '2', '3'])
+        self.assertTrue(items[-1]['title'].startswith('3 - '))
+
     def test_terminar_resuelve_conversacion(self, cli):
         self._webhook('hola', 1)
-        self._webhook('Terminar', 2)
+        self._webhook(self.FIN_RAIZ, 2)   # "Terminar la conversación" (auto)
         conv = self._conv()
         self.assertTrue(conv.finalizado)
         self.assertTrue(conv.chatealo_resuelta)
@@ -448,7 +493,7 @@ class WebhookIntegrationTests(TestCase):
 
     def test_conversacion_derivada_ignora_mensajes(self, cli):
         self._webhook('hola', 1)
-        self._webhook('Hablar con alguien', 2)  # deriva
+        self._webhook(self.OP_RAIZ, 2)  # deriva
         cli.reset_mock()
         self._webhook('sigo escribiendo', 3)
         cli.enviar_mensaje.assert_not_called()
@@ -456,7 +501,7 @@ class WebhookIntegrationTests(TestCase):
 
     def test_reactivacion_tras_resolver(self, cli):
         self._webhook('hola', 1)
-        self._webhook('Hablar con alguien', 2)                 # deriva
+        self._webhook(self.OP_RAIZ, 2)                         # deriva
         self._webhook('', 3, event='conversation_status_changed', status='resolved')
         cli.reset_mock()
         self._webhook('hola de nuevo', 4)                      # el contacto vuelve
@@ -526,14 +571,18 @@ class WebhookIntegrationTests(TestCase):
         self._webhook('hola', 2)
         cli.enviar_mensaje.assert_called_once()
 
-    def test_fuera_de_horario_no_deriva(self, cli):
+    def test_fuera_de_horario_oculta_operador(self, cli):
         self._webhook('hola', 1)
+        cli.reset_mock()
         with mock.patch('chatbot.api_views.esta_en_horario', return_value=False), \
              mock.patch('chatbot.api_views.mensaje_fuera_de_horario', return_value='Cerrado ahora.'):
-            self._webhook('Hablar con alguien', 2)
-        conv = self._conv()
-        self.assertFalse(conv.finalizado)
-        self.assertEqual(self._ult_log().accion, 'FUERA_HORARIO')
+            self._webhook('cualquier cosa', 2)
+        enviado = cli.enviar_mensaje.call_args[0][2]
+        _, kwargs = cli.enviar_mensaje.call_args
+        self.assertIn('Cerrado ahora.', enviado)
+        self.assertNotIn('Hablar con un operador', enviado)
+        # menú de la raíz sin operador => sólo "Terminar" como nav
+        self.assertEqual([it['value'] for it in kwargs['items']], ['1', '2'])
 
 
 # --------------------------------------------------------------------------- #
@@ -592,6 +641,7 @@ class TemporizadoresCommandTests(TestCase):
         call_command('procesar_temporizadores_chatbot')
         c.refresh_from_db()
         self.assertFalse(c.finalizado)
+
 
 
 # --------------------------------------------------------------------------- #

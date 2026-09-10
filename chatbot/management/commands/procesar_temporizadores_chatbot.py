@@ -15,8 +15,9 @@ from django.core.management.base import BaseCommand
 from django.utils import timezone
 
 from chatbot import chatealo_client, defaults
-from chatbot.api_views import _menu_con_encabezado, _opciones_de
+from chatbot.api_views import _opciones_visibles, _render_menu
 from chatbot.defaults import aplicar_variables
+from chatbot.horarios import esta_en_horario
 from chatbot.models import ConfiguracionChatbot, Conversacion, ConversacionLog
 
 logger = logging.getLogger('chatbot.webhook')
@@ -43,13 +44,14 @@ class Command(BaseCommand):
             remostrar_menu_en__isnull=False,
             remostrar_menu_en__lte=ahora,
         ).select_related('menu_actual')
+        en_horario = esta_en_horario()
         n = 0
         for c in pendientes:
-            opciones = _opciones_de(c.menu_actual)
-            texto = _menu_con_encabezado(config, c.menu_actual, opciones, c.nombre_contacto)
+            opciones = _opciones_visibles(c.menu_actual, en_horario)
+            texto, items = _render_menu(config, c.menu_actual, opciones, c.nombre_contacto)
             detalle = 'menú re-mostrado por temporizador'
             try:
-                chatealo_client.enviar_mensaje(config, c.conversation_id, texto)
+                chatealo_client.enviar_mensaje(config, c.conversation_id, texto, items=items)
             except Exception as exc:
                 logger.exception('re-mostrar menú de conversación %s', c.conversation_id)
                 detalle += f'; error: {exc}'

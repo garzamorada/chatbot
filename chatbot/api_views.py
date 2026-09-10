@@ -43,7 +43,7 @@ def _match_opcion(texto, opciones):
         if o.texto.strip().lower() == texto_norm.lower():
             return o
     for o in opciones:
-        if o.slug == texto_norm.lower():
+        if o.slug and o.slug == texto_norm.lower():
             return o
     return None
 
@@ -88,6 +88,84 @@ def _menu_con_encabezado(config, opcion_menu, opciones, nombre=''):
     sólo las opciones se numeran."""
     cuerpo = _texto_menu(opciones) if opciones else '(sin opciones)'
     return f'{_encabezado_menu(config, opcion_menu, nombre)}\n{cuerpo}'
+
+
+# --------------------------------------------------------------------------- #
+#  Opciones de navegación fijas (no viven en la BD)                            #
+#  Se agregan al final de TODO menú: "Volver al menú principal" (salvo en el   #
+#  menú principal), "Hablar con un operador" (sólo si es día/horario hábil) y  #
+#  "Terminar la conversación" (siempre).                                       #
+# --------------------------------------------------------------------------- #
+NAV_INICIO_TEXTO = 'Volver al menú principal'
+NAV_OPERADOR_TEXTO = 'Hablar con un operador'
+NAV_TERMINAR_TEXTO = 'Terminar la conversación'
+
+
+class _OpcionNav:
+    """Opción de navegación agregada automáticamente al pie de un menú.
+    Imita la interfaz mínima de `MenuOpcion` que usa el webhook."""
+    pk = None
+    archivo_id = None
+    mensaje_derivacion = ''
+    respuesta_texto = ''
+    slug = ''
+    activo = True
+    tiene_boton = False
+
+    def __init__(self, tipo, texto):
+        self.tipo = tipo
+        self.texto = texto
+
+    def __str__(self):
+        return self.texto
+
+
+def _opciones_nav(opcion_menu, en_horario):
+    navs = []
+    if opcion_menu is not None:
+        navs.append(_OpcionNav('INICIO', NAV_INICIO_TEXTO))
+    if en_horario:
+        navs.append(_OpcionNav('DERIVACION', NAV_OPERADOR_TEXTO))
+    navs.append(_OpcionNav('TERMINAR', NAV_TERMINAR_TEXTO))
+    return navs
+
+
+def _opciones_visibles(opcion_menu, en_horario):
+    """Opciones reales del menú (de la BD) + las de navegación fijas."""
+    return _opciones_de(opcion_menu) + _opciones_nav(opcion_menu, en_horario)
+
+
+def _es_opcion_db(opcion):
+    return isinstance(opcion, MenuOpcion)
+
+
+def _items_menu(opciones):
+    """Ítems para `content_type: input_select` (WhatsApp: 1-3 => botones,
+    4-10 => lista). Devuelve None si la cantidad se va de ese rango; en ese
+    caso el mensaje sale como texto plano numerado (que también funciona)."""
+    if not 1 <= len(opciones) <= 10:
+        return None
+    tope = 20 if len(opciones) <= 3 else 24
+    return [
+        {'title': f'{i} - {_limpiar_texto_opcion(o.texto)}'[:tope], 'value': str(i)}
+        for i, o in enumerate(opciones, start=1)
+    ]
+
+
+def _render_menu(config, opcion_menu, opciones, nombre='', mensaje_extra=''):
+    """(texto, items) de un menú: el texto numerado (con `mensaje_extra` al
+    frente si lo hay) y los ítems para `input_select`."""
+    texto = _menu_con_encabezado(config, opcion_menu, opciones, nombre)
+    if mensaje_extra:
+        texto = f'{mensaje_extra}\n\n{texto}'
+    return texto, _items_menu(opciones)
+
+
+def _enviar_menu(config, conversation_id, opcion_menu, opciones, nombre='', mensaje_extra=''):
+    """Manda un menú como lista/botones interactivos (con el texto numerado de
+    fallback en `content`)."""
+    texto, items = _render_menu(config, opcion_menu, opciones, nombre, mensaje_extra)
+    return _enviar_seguro(config, conversation_id, texto, items=items)
 
 
 def _url_de_archivo(request, archivo):
@@ -243,9 +321,9 @@ def _aplicar_labels_seguro(config, conversation_id, labels):
         return f'Error actualizando labels: {exc}'
 
 
-def _enviar_seguro(config, conversation_id, texto):
+def _enviar_seguro(config, conversation_id, texto, items=None):
     try:
-        chatealo_client.enviar_mensaje(config, conversation_id, texto)
+        chatealo_client.enviar_mensaje(config, conversation_id, texto, items=items)
         return ''
     except Exception as exc:
         logger.exception('Error enviando mensaje a conversación %s', conversation_id)
@@ -304,20 +382,17 @@ def _reactivar_conversacion(config, conversation_id, conversacion, labels_actual
     conversacion.label_equipo_actual = ''
     conversacion.menu_mostrado = True
 
-    hijos = _opciones_de(None)
-    err_msg = _enviar_seguro(
-        config, conversation_id,
-        _menu_con_encabezado(config, None, hijos, conversacion.nombre_contacto),
-    )
+    opciones = _opciones_visibles(None, esta_en_horario())
+    err_msg = _enviar_menu(config, conversation_id, None, opciones, conversacion.nombre_contacto)
     return err_labels, err_msg
 
 
-def _navegar_a_menu(config, conversation_id, conversacion, nuevo_menu, mensaje_extra=''):
+def _navegar_a_menu(config, conversation_id, conversacion, nuevo_menu, en_horario, mensaje_extra=''):
     """Cambia conversacion.menu_actual y manda el listado de opciones del nuevo
-    menú. Usado por SUBMENU, VOLVER e INICIO — solo cambia cómo se calcula
-    `nuevo_menu`. Las etiquetas `menu-*` NO se aplican en chatealo: sólo se
-    registran en el log interno (`nota_menu`)."""
-    hijos = _opciones_de(nuevo_menu)
+    menú (como lista/botones interactivos). Usado por SUBMENU e INICIO — solo
+    cambia cómo se calcula `nuevo_menu`. Las etiquetas `menu-*` NO se aplican en
+    chatealo: sólo se registran en el log interno (`nota_menu`)."""
+    opciones = _opciones_visibles(nuevo_menu, en_horario)
     label_anterior = _label_de(conversacion.menu_actual)
     label_nueva = _label_de(nuevo_menu)
     nota_menu = f'menu: {label_anterior} → {label_nueva}'
@@ -330,10 +405,10 @@ def _navegar_a_menu(config, conversation_id, conversacion, nuevo_menu, mensaje_e
             nombre=conversacion.nombre_contacto,
         )
 
-    respuesta = _menu_con_encabezado(config, nuevo_menu, hijos, conversacion.nombre_contacto)
-    if mensaje_extra:
-        respuesta = mensaje_extra + '\n\n' + respuesta
-    err_msg = _enviar_seguro(config, conversation_id, respuesta)
+    err_msg = _enviar_menu(
+        config, conversation_id, nuevo_menu, opciones,
+        conversacion.nombre_contacto, mensaje_extra,
+    )
 
     conversacion.menu_actual = nuevo_menu
     conversacion.menu_mostrado = True
@@ -424,8 +499,11 @@ def webhook_chatealo(request, secret):
         ] + list(campos_extra or [])
         conversacion.save(update_fields=campos)
 
-    if payload.get('content_type') != 'text':
-        _log(conversacion, texto, None, 'IGNORADO', 'content_type no es texto')
+    # Se aceptan los mensajes de texto y las respuestas a listas/botones
+    # interactivos (que chatealo puede etiquetar 'input_select'). El resto
+    # (adjuntos, formularios, etc.) se ignora.
+    if payload.get('content_type') not in ('text', 'input_select', None, ''):
+        _log(conversacion, texto, None, 'IGNORADO', 'content_type no accionable')
         _cerrar()
         return HttpResponse(status=200)
 
@@ -443,60 +521,49 @@ def webhook_chatealo(request, secret):
         _cerrar()
         return HttpResponse(status=200)
 
-    opciones_actuales = _opciones_de(conversacion.menu_actual)
+    en_horario = esta_en_horario()
+    opciones_actuales = _opciones_visibles(conversacion.menu_actual, en_horario)
     opcion = _match_opcion(texto, opciones_actuales)
+    opcion_db = opcion if _es_opcion_db(opcion) else None
 
     if opcion is None:
-        if not opciones_actuales:
-            err = _enviar_seguro(config, conversation_id, 'Por el momento no hay opciones configuradas.')
-            _log(conversacion, texto, None, 'INVALIDA', err)
-            _cerrar()
-            return HttpResponse(status=200)
-
         # "No entendí esa opción" SÓLO cuando la persona está dentro de un
         # submenú y eligió algo inválido. En el menú principal nunca: se le
         # muestra el menú (con bienvenida la primera vez), sin importar qué
         # haya escrito.
         nombre = conversacion.nombre_contacto
+        partes = []
+        if not en_horario:
+            partes.append(mensaje_fuera_de_horario())
         if conversacion.menu_actual is not None:
-            respuesta = 'No entendí esa opción.\n\n' + _menu_con_encabezado(
-                config, conversacion.menu_actual, opciones_actuales, nombre,
-            )
+            partes.append('No entendí esa opción.')
             accion = 'INVALIDA'
         elif not conversacion.menu_mostrado:
-            bienvenida = aplicar_variables(
+            partes.append(aplicar_variables(
                 (config.mensaje_bienvenida or '').strip() or defaults.MENSAJE_BIENVENIDA, nombre=nombre,
-            )
-            respuesta = bienvenida + '\n\n' + _menu_con_encabezado(config, None, opciones_actuales, nombre)
+            ))
             accion = 'BIENVENIDA'
         else:
-            respuesta = _menu_con_encabezado(config, None, opciones_actuales, nombre)
             accion = 'MENU'
-        if not esta_en_horario():
-            respuesta = mensaje_fuera_de_horario() + '\n\n' + respuesta
-        err = _enviar_seguro(config, conversation_id, respuesta)
+        err = _enviar_menu(
+            config, conversation_id, conversacion.menu_actual, opciones_actuales,
+            nombre, '\n\n'.join(partes),
+        )
         conversacion.menu_mostrado = True
         _log(conversacion, texto, None, accion, err)
         _cerrar()
         return HttpResponse(status=200)
 
     if opcion.tipo == 'SUBMENU':
-        nota_menu, err_msg = _navegar_a_menu(config, conversation_id, conversacion, opcion)
+        nota_menu, err_msg = _navegar_a_menu(config, conversation_id, conversacion, opcion, en_horario)
         _cerrar(['menu_actual'])
-        _log(conversacion, texto, opcion, 'MENU', '; '.join(filter(None, [nota_menu, err_msg])))
-        return HttpResponse(status=200)
-
-    if opcion.tipo == 'VOLVER':
-        destino = conversacion.menu_actual.parent if conversacion.menu_actual else None
-        nota_menu, err_msg = _navegar_a_menu(config, conversation_id, conversacion, destino)
-        _cerrar(['menu_actual'])
-        _log(conversacion, texto, opcion, 'MENU', '; '.join(filter(None, [nota_menu, err_msg])))
+        _log(conversacion, texto, opcion_db, 'MENU', '; '.join(filter(None, [nota_menu, err_msg])))
         return HttpResponse(status=200)
 
     if opcion.tipo == 'INICIO':
-        nota_menu, err_msg = _navegar_a_menu(config, conversation_id, conversacion, None)
+        nota_menu, err_msg = _navegar_a_menu(config, conversation_id, conversacion, None, en_horario)
         _cerrar(['menu_actual'])
-        _log(conversacion, texto, opcion, 'MENU', '; '.join(filter(None, [nota_menu, err_msg])))
+        _log(conversacion, texto, opcion_db, 'MENU', '; '.join(filter(None, [nota_menu, err_msg])))
         return HttpResponse(status=200)
 
     if opcion.tipo == 'RESPUESTA':
@@ -510,7 +577,7 @@ def webhook_chatealo(request, secret):
         if config.segundos_remostrar_menu:
             conversacion.remostrar_menu_en = timezone.now() + timedelta(seconds=config.segundos_remostrar_menu)
         _cerrar()
-        _log(conversacion, texto, opcion, 'RESPUESTA', err_msg)
+        _log(conversacion, texto, opcion_db, 'RESPUESTA', err_msg)
         return HttpResponse(status=200)
 
     if opcion.tipo == 'TERMINAR':
@@ -531,19 +598,20 @@ def webhook_chatealo(request, secret):
         # ya la resolvimos en chatealo: si el contacto vuelve a escribir, reactivar.
         conversacion.chatealo_resuelta = True
         _cerrar(['finalizado', 'chatealo_resuelta'])
-        _log(conversacion, texto, opcion, 'TERMINAR', '; '.join(filter(None, [err_msg, err_resolver])))
+        _log(conversacion, texto, opcion_db, 'TERMINAR', '; '.join(filter(None, [err_msg, err_resolver])))
         return HttpResponse(status=200)
 
     # DERIVACION
-    if not esta_en_horario():
-        hijos_actuales = _opciones_de(conversacion.menu_actual)
-        respuesta = mensaje_fuera_de_horario()
-        if hijos_actuales:
-            respuesta += '\n\nMientras tanto, elegí una opción:\n' + _texto_menu(hijos_actuales)
-        err_msg = _enviar_seguro(config, conversation_id, respuesta)
+    if not en_horario:
+        opciones_fh = _opciones_visibles(conversacion.menu_actual, False)
+        err_msg = _enviar_menu(
+            config, conversation_id, conversacion.menu_actual, opciones_fh,
+            conversacion.nombre_contacto,
+            mensaje_fuera_de_horario() + '\n\nMientras tanto, elegí una opción:',
+        )
         conversacion.menu_mostrado = True
         _cerrar()
-        _log(conversacion, texto, opcion, 'FUERA_HORARIO', err_msg)
+        _log(conversacion, texto, opcion_db, 'FUERA_HORARIO', err_msg)
         return HttpResponse(status=200)
 
     # etiqueta 'equipo-<slug del menú actual>' (el menú donde el usuario
@@ -567,5 +635,5 @@ def webhook_chatealo(request, secret):
     # recién derivada: el agente todavía no la resolvió.
     conversacion.chatealo_resuelta = False
     _cerrar(['label_equipo_actual', 'finalizado', 'chatealo_resuelta'])
-    _log(conversacion, texto, opcion, 'DERIVACION', '; '.join(filter(None, [err_labels, err_msg])))
+    _log(conversacion, texto, opcion_db, 'DERIVACION', '; '.join(filter(None, [err_labels, err_msg])))
     return HttpResponse(status=200)

@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% load static %}
 {% block head %}
-<link rel="stylesheet" href="{% static 'css/styles-chatbot.css' %}?v=20260909b">
+<link rel="stylesheet" href="{% static 'css/styles-chatbot.css' %}?v=20260910">
 {% endblock %}
 {% block content %}
 <div class="row mb-3 align-items-center g-2">
@@ -78,9 +78,10 @@
           <div class="paleta-item tipo-submenu" draggable="true" data-tipo="SUBMENU"><i class="bi bi-folder2"></i> Menú</div>
           <div class="paleta-item tipo-respuesta" draggable="true" data-tipo="RESPUESTA"><i class="bi bi-chat-left-text"></i> Respuesta</div>
           <div class="paleta-item tipo-derivacion" draggable="true" data-tipo="DERIVACION"><i class="bi bi-person-lines-fill"></i> Derivación</div>
-          <div class="paleta-item tipo-volver" draggable="true" data-tipo="VOLVER"><i class="bi bi-arrow-return-left"></i> Volver</div>
-          <div class="paleta-item tipo-inicio" draggable="true" data-tipo="INICIO"><i class="bi bi-house-door"></i> Ir al inicio</div>
-          <div class="paleta-item tipo-terminar" draggable="true" data-tipo="TERMINAR"><i class="bi bi-flag"></i> Terminar</div>
+          <span class="text-muted small ms-2 d-none d-lg-inline">
+            <i class="bi bi-info-circle"></i>
+            El bot agrega solo al pie de cada menú: volver al menú principal, hablar con un operador (día hábil) y terminar.
+          </span>
           <div id="chatbot-menu-principal" class="ms-auto">
             <i class="bi bi-house-door"></i> <span class="d-none d-sm-inline">Soltá acá para mandar al menú principal</span>
           </div>
@@ -606,8 +607,8 @@ window.CHATBOT_CREAR_OPCION_URL = "{% url 'chatbot:crear_opcion' %}";
   }
 })();
 </script>
-<script src="{% static 'js/chatbot_wa_editor.js' %}?v=20260909b"></script>
-<script src="{% static 'js/chatbot_menu.js' %}?v=20260909b"></script>
+<script src="{% static 'js/chatbot_wa_editor.js' %}?v=20260910"></script>
+<script src="{% static 'js/chatbot_menu.js' %}?v=20260910"></script>
 <script>
 if (window.iniciarEditoresWhatsApp) window.iniciarEditoresWhatsApp(document);
 </script>
